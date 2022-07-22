@@ -66,8 +66,6 @@
     // scene.background = new THREE.Color(0xf8f8ff);
     // scene.background = new THREE.Color( 0xffdf06 );
     scene.background = new THREE.Color(0xf9fafb);
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.shadowMap.enabled = true;
     renderer.setSize(sceneWidth, sceneHeight);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -78,25 +76,11 @@
     camera.lookAt(new THREE.Vector3(0, 0, 0));
     controls.update(); // OrbitControls must be updated after changes to camera position/rotation
 
-    // Objects
-    const floorGeometry = new THREE.PlaneGeometry(22, 22);
-    const floorMaterial = new THREE.ShadowMaterial({ opacity: 0.3 });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.name = 'floor';
-    floor.position.y = -4;
-    floor.rotateX(-Math.PI / 2);
-    floor.receiveShadow = true;
-
-    scene.add(floor);
-
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xc4c4c4, 0.7);
     scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
     directionalLight.position.y = 10;
     scene.add(directionalLight);
 
@@ -171,13 +155,6 @@
     renderer.dispose();
   }
 
-  let shadowsOn = true;
-  function toggleShadows() {
-    shadowsOn = !shadowsOn;
-    // renderer.shadowMap.enabled = shadowsOn;
-    cube.setCastShadows(shadowsOn);
-  }
-
   let faces = true;
   function toggleFaces() {
     faces = !faces;
@@ -216,7 +193,6 @@
         {/each}
       </div>
       <div class="space-y-2">
-        <button on:click={toggleShadows}>Toggle shadows</button>
         <button on:click={toggleFaces}>Toggle faces</button>
       </div>
       <select bind:value={selected} on:change={(e) => switchShape(e.currentTarget.value)}>
