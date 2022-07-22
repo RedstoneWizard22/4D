@@ -1,66 +1,81 @@
-/** Perspective projects a set of N+1 d points into N d */
-function perspeciveProject(points: number[][], dimension: number, camDist = -3): number[][] {
-  const projection = [];
-  for (let d = 0; d < dimension; d++) {
-    projection.push(Array.from(points[d]));
-  }
+import type { OrientedArea4D, OrientedArea3D } from 'src/types/common';
 
-  for (let i = 0; i < points[0].length; i++) {
-    const multiplier = 2 / (points[dimension][i] - camDist);
-    for (let d = 0; d < dimension; d++) {
-      projection[d][i] *= multiplier;
-    }
-  }
+/** Perspective project a set of 4D vectors to 3D */
+function perspectiveProject4D(points: number[][], camDist = -3): number[][] {
+  return points.map((point) => {
+    const multiplier = 2 / (point[3] - camDist);
+    return [point[0] * multiplier, point[1] * multiplier, point[2] * multiplier];
+  });
+}
 
-  return projection;
+/** Perspective project a set of 3D vectors to 2D */
+function perspectiveProject3D(points: number[][], camDist = -3): number[][] {
+  return points.map((point) => {
+    const multiplier = 2 / (point[2] - camDist);
+    return [point[0] * multiplier, point[1] * multiplier];
+  });
+}
+
+/** Returns the oriented area formed by the outer product of 2 vectors (4D) */
+function orientedArea4D(v1: number[], v2: number[]): OrientedArea4D {
+  // Create unit vectors from v1 and v2
+  const v1Magnitude = v1.reduce((a, b) => a + b * b, 0);
+  const v2Magnitude = v2.reduce((a, b) => a + b * b, 0);
+  const a = v1.map((x) => x / v1Magnitude);
+  const b = v2.map((x) => x / v2Magnitude);
+
+  // Compute the unit oriented area formed by the two vectors
+  return [
+    a[0] * b[1] - a[1] * b[0],
+    a[0] * b[2] - a[2] * b[0],
+    a[0] * b[3] - a[3] * b[0],
+    a[1] * b[2] - a[2] * b[1],
+    a[1] * b[3] - a[3] * b[1],
+    a[2] * b[3] - a[3] * b[2],
+  ];
+}
+
+/** Returns the oriented area formed by the outer product of 2 vectors (3D) */
+function orientedArea3D(v1: number[], v2: number[]): OrientedArea3D {
+  // Create unit vectors from v1 and v2
+  const v1Magnitude = v1.reduce((a, b) => a + b * b, 0);
+  const v2Magnitude = v2.reduce((a, b) => a + b * b, 0);
+  const a = v1.map((x) => x / v1Magnitude);
+  const b = v2.map((x) => x / v2Magnitude);
+
+  // Compute the unit oriented area formed by the two vectors
+  return [a[0] * b[1] - a[1] * b[0], a[0] * b[2] - a[2] * b[0], a[1] * b[2] - a[2] * b[1]];
 }
 
 class Rotor4D {
   // Angle of rotation
-  _theta: number;
+  _theta = 0;
   // The unit oriented area lying in the plane of rotation
-  // [e12, e13, e14, e23, e24, e34]
-  _plane: [number, number, number, number, number, number];
+  _plane: OrientedArea4D = [0, 0, 0, 0, 0, 0];
   // The rotation matrix
-  _rotationMatrix: number[][];
+  _rotationMatrix = [
+    [1, 0, 0, 0],
+    [0, 1, 0, 0],
+    [0, 0, 1, 0],
+    [0, 0, 0, 1],
+  ];
+  // Signals that the rotation matrix needs to be recalculated
+  _rotationMatrixDirty = false;
 
-  constructor() {
-    this._theta = 0;
-    this._plane = [0, 0, 0, 0, 0, 0];
-    this._rotationMatrix = [
-      [1, 0, 0, 0],
-      [0, 1, 0, 0],
-      [0, 0, 1, 0],
-      [0, 0, 0, 1],
-    ];
-  }
-
-  /** Sets the plane or rotation, specified by two vectors */
+  /** Sets the plane of rotation, given two vectors spanning it */
   setPlane(v1: number[], v2: number[]): void {
-    // Create unit vectors from v1 and v2
-    const v1Magnitude = v1.reduce((a, b) => a + b * b, 0);
-    const v2Magnitude = v2.reduce((a, b) => a + b * b, 0);
-    const a = v1.map((x) => x / v1Magnitude);
-    const b = v2.map((x) => x / v2Magnitude);
-
-    // Compute the unit oriented area formed by the two vectors
-    this._plane = [
-      a[0] * b[1] - a[1] * b[0],
-      a[0] * b[2] - a[2] * b[0],
-      a[0] * b[3] - a[3] * b[0],
-      a[1] * b[2] - a[2] * b[1],
-      a[1] * b[3] - a[3] * b[1],
-      a[2] * b[3] - a[3] * b[2],
-    ];
+    this._plane = orientedArea4D(v1, v2);
+    this._rotationMatrixDirty = true;
   }
 
   /** Sets the angle of rotation */
   setAngle(theta: number): void {
     this._theta = theta;
+    this._rotationMatrixDirty = true;
   }
 
   /** Calculates the rotation matrix */
-  calculateRotationMatrix(): void {
+  _calculateRotationMatrix(): void {
     const cTheta = Math.cos(this._theta / 2);
     const sTheta = Math.sin(this._theta / 2);
 
@@ -129,81 +144,57 @@ class Rotor4D {
     ];
   }
 
-  /** Rotates the points by the rotation matrix */
-  rotate(points: number[]): number[];
+  /** Rotates vector(s) in place by the rotation matrix */
   rotate(points: number[][]): number[][];
+  rotate(points: number[]): number[];
   rotate(points: number[][] | number[]): number[][] | number[] {
-    // If points is a single point, return a single point
+    if (this._rotationMatrixDirty) {
+      this._calculateRotationMatrix();
+      this._rotationMatrixDirty = false;
+    }
+
     if (typeof points[0] === 'number') {
-      points = points as number[];
-
-      const rotatedPoint = Array.from(points);
-
-      for (let d = 0; d < 4; d++) {
-        rotatedPoint[d] = 0;
+      const rotated: number[] = [0, 0, 0, 0];
+      for (let i = 0; i < 4; i++) {
         for (let j = 0; j < 4; j++) {
-          rotatedPoint[d] += this._rotationMatrix[d][j] * points[j];
+          rotated[i] += this._rotationMatrix[i][j] * (points as number[])[j];
         }
       }
-
-      return rotatedPoint;
+      return rotated;
     } else {
-      points = points as number[][];
-      // It's a list of points so return a list of points
-      const rotatedPoints = points.map((row) => Array.from(row));
-
-      for (let i = 0; i < points[0].length; i++) {
-        for (let d = 0; d < 4; d++) {
-          rotatedPoints[d][i] = 0;
-          for (let j = 0; j < 4; j++) {
-            rotatedPoints[d][i] += this._rotationMatrix[d][j] * points[j][i];
-          }
-        }
-      }
-
-      return rotatedPoints;
+      return points.map((x) => this.rotate(x as number[]));
     }
   }
 }
 
 class Rotor3D {
   // Angle of rotation
-  _theta: number;
+  _theta = 0;
   // The unit oriented area lying in the plane of rotation
-  // [e12, e13, e14, e23, e24, e34]
-  _plane: [number, number, number];
+  _plane: OrientedArea3D = [0, 0, 0];
   // The rotation matrix
-  _rotationMatrix: number[][];
+  _rotationMatrix = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ];
+  // Signals that the rotation matrix needs to be recalculated
+  _rotationMatrixDirty = false;
 
-  constructor() {
-    this._theta = 0;
-    this._plane = [0, 0, 0];
-    this._rotationMatrix = [
-      [1, 0, 0],
-      [0, 1, 0],
-      [0, 0, 1],
-    ];
-  }
-
-  /** Sets the plane or rotation, specified by two vectors */
+  /** Sets the plane of rotation, given two vectors spanning it */
   setPlane(v1: number[], v2: number[]): void {
-    // Create unit vectors from v1 and v2
-    const v1Magnitude = v1.reduce((a, b) => a + b * b, 0);
-    const v2Magnitude = v2.reduce((a, b) => a + b * b, 0);
-    const a = v1.map((x) => x / v1Magnitude);
-    const b = v2.map((x) => x / v2Magnitude);
-
-    // Compute the unit oriented area formed by the two vectors
-    this._plane = [a[0] * b[1] - a[1] * b[0], a[0] * b[2] - a[2] * b[0], a[1] * b[2] - a[2] * b[1]];
+    this._plane = orientedArea3D(v1, v2);
+    this._rotationMatrixDirty = true;
   }
 
   /** Sets the angle of rotation */
   setAngle(theta: number): void {
     this._theta = theta;
+    this._rotationMatrixDirty = true;
   }
 
   /** Calculates the rotation matrix */
-  calculateRotationMatrix(): void {
+  _calculateRotationMatrix(): void {
     const cTheta = Math.cos(this._theta / 2);
     const sTheta = Math.sin(this._theta / 2);
 
@@ -230,41 +221,34 @@ class Rotor3D {
     ];
   }
 
-  /** Rotates the points by the rotation matrix */
-  rotate(points: number[]): number[];
+  /** Rotates vector(s) in place by the rotation matrix */
   rotate(points: number[][]): number[][];
+  rotate(points: number[]): number[];
   rotate(points: number[][] | number[]): number[][] | number[] {
-    // If points is a single point, return a single point
+    if (this._rotationMatrixDirty) {
+      this._calculateRotationMatrix();
+      this._rotationMatrixDirty = false;
+    }
+
     if (typeof points[0] === 'number') {
-      points = points as number[];
-
-      const rotatedPoint = Array.from(points);
-
-      for (let d = 0; d < 3; d++) {
-        rotatedPoint[d] = 0;
+      const rotated: number[] = [0, 0, 0];
+      for (let i = 0; i < 3; i++) {
         for (let j = 0; j < 3; j++) {
-          rotatedPoint[d] += this._rotationMatrix[d][j] * points[j];
+          rotated[i] += this._rotationMatrix[i][j] * (points as number[])[j];
         }
       }
-
-      return rotatedPoint;
+      return rotated;
     } else {
-      points = points as number[][];
-      // It's a list of points so return a list of points
-      const rotatedPoints = points.map((row) => Array.from(row));
-
-      for (let i = 0; i < points[0].length; i++) {
-        for (let d = 0; d < 3; d++) {
-          rotatedPoints[d][i] = 0;
-          for (let j = 0; j < 3; j++) {
-            rotatedPoints[d][i] += this._rotationMatrix[d][j] * points[j][i];
-          }
-        }
-      }
-
-      return rotatedPoints;
+      return points.map((x) => this.rotate(x as number[]));
     }
   }
 }
 
-export { perspeciveProject, Rotor4D, Rotor3D };
+export {
+  perspectiveProject4D,
+  perspectiveProject3D,
+  orientedArea4D,
+  orientedArea3D,
+  Rotor4D,
+  Rotor3D,
+};

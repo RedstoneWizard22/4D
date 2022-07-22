@@ -1,3 +1,4 @@
+import type { Rotation4D } from 'src/types/common';
 import { Rotor4D } from './4dtools';
 
 interface HyperObjectData {
@@ -9,15 +10,6 @@ interface HyperObjectData {
   optimalThickness: number;
   maxW: number;
 }
-
-type Rotation4D = {
-  xy: number;
-  xz: number;
-  yz: number;
-  xw: number;
-  yw: number;
-  zw: number;
-};
 
 class HyperObject {
   data!: HyperObjectData;
@@ -60,8 +52,8 @@ class HyperObject {
     this.points4D = data.vertices.map((v) => v.slice());
   }
 
-  /** Sets points4D to data.vertices rotated by rotation */
-  setRotation(rotation: Rotation4D): void {
+  /** Resets the hyperobject to it's original state */
+  reset(): void {
     this.points4D = this.data.vertices.map((v) => v.slice());
     this.axes = {
       x: [1, 0, 0, 0],
@@ -69,7 +61,6 @@ class HyperObject {
       z: [0, 0, 1, 0],
       w: [0, 0, 0, 1],
     };
-    this.rotate(rotation);
   }
 
   /** Rotates points4D by a certain ammount */
@@ -118,9 +109,6 @@ class HyperObject {
 
       // Set the angle of rotation
       rotor.setAngle(rot[i]);
-
-      // Calculate the rotation matrix
-      rotor.calculateRotationMatrix();
 
       // Rotate the points
       this.points4D = this.rotor.rotate(this.points4D);

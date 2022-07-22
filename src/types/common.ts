@@ -1,5 +1,3 @@
-type Vector3 = [number, number, number];
-type Vector4 = [number, number, number, number];
 type Rotation3D = {
   xy: number;
   xz: number;
@@ -23,4 +21,4 @@ type OrientedArea4D = [
   e34: number
 ];
 
-export type { Vector3, Vector4, Rotation3D, Rotation4D, OrientedArea3D, OrientedArea4D };
+export type { Rotation3D, Rotation4D, OrientedArea3D, OrientedArea4D };

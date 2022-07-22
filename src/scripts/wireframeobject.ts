@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as THREE from 'three';
-import { perspeciveProject } from './4dtools';
+import { perspectiveProject4D } from './4dtools';
 import HyperObject, { type HyperObjectData } from './hyperobject';
 
 class WireframeObject extends HyperObject {
-  points3D!: number[][];
   visible: boolean;
   facesVisible: boolean;
   castShadows: boolean;
@@ -37,14 +36,7 @@ class WireframeObject extends HyperObject {
   /** Loades err... Data */
   loadData(data: HyperObjectData): void {
     super.loadData(data);
-    this.points3D = Array.from({ length: this.points4D.length }, () => [0, 0, 0]);
-    this.projectTo3D();
     this.createMeshes();
-  }
-
-  /** Projects points4D to 3D */
-  projectTo3D(): void {
-    this.points3D = perspeciveProject(this.points4D, 3, this.data.optimalCamW);
   }
 
   /** Toggles visibility of all face meshes */
@@ -135,7 +127,7 @@ class WireframeObject extends HyperObject {
     }
 
     // Create a mesh for each vertex
-    for (let i = 0; i < this.data.vertices[0].length; i++) {
+    for (let i = 0; i < this.data.vertices.length; i++) {
       const mat = new THREE.MeshPhongMaterial({
         color: 0x2194ce,
         shininess: 100,
@@ -144,12 +136,12 @@ class WireframeObject extends HyperObject {
       const color = { value: new THREE.Color(1, 0, 0) };
 
       mat.onBeforeCompile = (shader) => {
-        shader.uniforms.myColor = color;
+        shader.uniforms.color = color;
         shader.fragmentShader = `
-        uniform vec3 myColor;
+        uniform vec3 color;
         ${shader.fragmentShader.replace(
           'vec4 diffuseColor = vec4( diffuse, opacity );',
-          'vec4 diffuseColor = vec4( myColor, opacity );'
+          'vec4 diffuseColor = vec4( color, opacity );'
         )}
         `;
       };
@@ -205,25 +197,18 @@ class WireframeObject extends HyperObject {
   }
 
   /** Updates position and rotation of all meshes to the correct values */
-  updateMeshes(): void {
+  update(): void {
+    const points3D = perspectiveProject4D(this.points4D, this.data.optimalCamW);
+
     const maxW = this.data.maxW;
 
-    // Update edge
+    // Update edges
     const edgeCount = this.data.edges.length;
-
     for (let i = 0; i < edgeCount; i++) {
       const edge = this.data.edges[i];
 
-      const vertex1 = [
-        this.points3D[0][edge[0]],
-        this.points3D[1][edge[0]],
-        this.points3D[2][edge[0]],
-      ];
-      const vertex2 = [
-        this.points3D[0][edge[1]],
-        this.points3D[1][edge[1]],
-        this.points3D[2][edge[1]],
-      ];
+      const vertex1 = points3D[edge[0]];
+      const vertex2 = points3D[edge[1]];
 
       const length = Math.sqrt(
         Math.pow(vertex1[0] - vertex2[0], 2) +
@@ -249,31 +234,27 @@ class WireframeObject extends HyperObject {
       );
 
       // Update colors
-      // @ts-expect-error: Typescript doesn't know about our custom shader
+      // @ts-expect-error: Typescript doesn't know about the custom shader
       this.meshes.edges[i].material.userData.color1.value.g = Math.abs(
-        ((this.points4D[3][edge[0]] + maxW) / maxW) * 0.5
+        ((this.points4D[edge[0]][3] + maxW) / maxW) * 0.5
       );
 
-      // @ts-expect-error: Typescript doesn't know about our custom shader
+      // @ts-expect-error: Typescript doesn't know about the custom shader
       this.meshes.edges[i].material.userData.color2.value.g = Math.abs(
-        ((this.points4D[3][edge[1]] + maxW) / maxW) * 0.5
+        ((this.points4D[edge[1]][3] + maxW) / maxW) * 0.5
       );
     }
 
     // Update vertices
-    const vertexCount = this.data.vertices[0].length;
+    const vertexCount = this.data.vertices.length;
     for (let i = 0; i < vertexCount; i++) {
       // Update position
-      this.meshes.vertices[i].position.set(
-        this.points3D[0][i],
-        this.points3D[1][i],
-        this.points3D[2][i]
-      );
+      this.meshes.vertices[i].position.set(...(points3D[i] as [number, number, number]));
 
       // Update colors
       // @ts-expect-error: Typescript doesn't know about our custom shader
       this.meshes.vertices[i].material.userData.color.value.g = Math.abs(
-        ((this.points4D[3][i] + maxW) / maxW) * 0.5 * 0.8
+        ((this.points4D[i][3] + maxW) / maxW) * 0.5 * 0.8
       );
     }
 
@@ -287,9 +268,9 @@ class WireframeObject extends HyperObject {
         yBar = 0,
         zBar = 0;
       for (let j = 0; j < face.length; j++) {
-        xBar += this.points3D[0][face[j]];
-        yBar += this.points3D[1][face[j]];
-        zBar += this.points3D[2][face[j]];
+        xBar += points3D[face[j]][0];
+        yBar += points3D[face[j]][1];
+        zBar += points3D[face[j]][2];
       }
       xBar /= face.length;
       yBar /= face.length;
@@ -305,11 +286,11 @@ class WireframeObject extends HyperObject {
       let k = 0;
       for (let j = 0; j < face.length; j++) {
         // @ts-expect-error: Tis ok as long as you set needsUpdate to true
-        mesh.geometry.attributes.position.array[k] = this.points3D[0][face[j]] - xBar;
+        mesh.geometry.attributes.position.array[k] = points3D[face[j]][0] - xBar;
         // @ts-expect-error: Tis ok as long as you set needsUpdate to true
-        mesh.geometry.attributes.position.array[k + 1] = this.points3D[1][face[j]] - yBar;
+        mesh.geometry.attributes.position.array[k + 1] = points3D[face[j]][1] - yBar;
         // @ts-expect-error: Tis ok as long as you set needsUpdate to true
-        mesh.geometry.attributes.position.array[k + 2] = this.points3D[2][face[j]] - zBar;
+        mesh.geometry.attributes.position.array[k + 2] = points3D[face[j]][2] - zBar;
 
         k += 3;
 

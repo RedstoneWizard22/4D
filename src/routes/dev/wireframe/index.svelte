@@ -101,7 +101,7 @@
     scene.add(directionalLight);
 
     cube = new WireframeObject(scene, shapes[selected]);
-    cube.updateMeshes();
+    cube.update();
   }
 
   let fpsInterval: number, now: number, then: number, elapsed: number;
@@ -138,9 +138,9 @@
 
       // Put your drawing code here
       let start = performance.now();
-      cube.setRotation(rotation);
-      cube.projectTo3D();
-      cube.updateMeshes();
+      cube.reset();
+      cube.rotate(rotation);
+      cube.update();
       calcTime += performance.now() - start;
       start = performance.now();
       renderer.render(scene, camera);
