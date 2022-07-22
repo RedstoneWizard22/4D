@@ -1,7 +1,7 @@
 import type { OrientedArea4D, OrientedArea3D } from 'src/types/common';
 
 /** Perspective project a set of 4D vectors to 3D */
-function perspectiveProject4D(points: number[][], camDist = -3): number[][] {
+function perspectiveProject4D(points: number[][], camDist: number): number[][] {
   return points.map((point) => {
     const multiplier = 2 / (point[3] - camDist);
     return [point[0] * multiplier, point[1] * multiplier, point[2] * multiplier];
@@ -9,7 +9,7 @@ function perspectiveProject4D(points: number[][], camDist = -3): number[][] {
 }
 
 /** Perspective project a set of 3D vectors to 2D */
-function perspectiveProject3D(points: number[][], camDist = -3): number[][] {
+function perspectiveProject3D(points: number[][], camDist: number): number[][] {
   return points.map((point) => {
     const multiplier = 2 / (point[2] - camDist);
     return [point[0] * multiplier, point[1] * multiplier];

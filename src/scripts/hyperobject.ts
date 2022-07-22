@@ -6,9 +6,7 @@ interface HyperObjectData {
   edges: number[][];
   faces: number[][];
   volumes: number[][];
-  optimalCamW: number;
   optimalThickness: number;
-  maxW: number;
 }
 
 class HyperObject {
@@ -31,9 +29,7 @@ class HyperObject {
         edges: [],
         faces: [],
         volumes: [],
-        optimalCamW: 0,
         optimalThickness: 0,
-        maxW: 0,
       };
     }
     this.rotor = new Rotor4D();

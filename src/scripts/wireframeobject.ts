@@ -186,9 +186,8 @@ class WireframeObject extends HyperObject {
 
   /** Updates position and rotation of all meshes to the correct values */
   update(): void {
-    const points3D = perspectiveProject4D(this.points4D, this.data.optimalCamW);
-
-    const maxW = this.data.maxW;
+    const points3D = perspectiveProject4D(this.points4D, -1.5);
+    const MAX_W = 1;
 
     // Update edges
     const edgeCount = this.data.edges.length;
@@ -224,12 +223,12 @@ class WireframeObject extends HyperObject {
       // Update colors
       // @ts-expect-error: Typescript doesn't know about the custom shader
       this.meshes.edges[i].material.userData.color1.value.g = Math.abs(
-        ((this.points4D[edge[0]][3] + maxW) / maxW) * 0.5
+        ((this.points4D[edge[0]][3] + MAX_W) / MAX_W) * 0.5
       );
 
       // @ts-expect-error: Typescript doesn't know about the custom shader
       this.meshes.edges[i].material.userData.color2.value.g = Math.abs(
-        ((this.points4D[edge[1]][3] + maxW) / maxW) * 0.5
+        ((this.points4D[edge[1]][3] + MAX_W) / MAX_W) * 0.5
       );
     }
 
@@ -242,7 +241,7 @@ class WireframeObject extends HyperObject {
       // Update colors
       // @ts-expect-error: Typescript doesn't know about our custom shader
       this.meshes.vertices[i].material.userData.color.value.g = Math.abs(
-        ((this.points4D[i][3] + maxW) / maxW) * 0.5 * 0.8
+        ((this.points4D[i][3] + MAX_W) / MAX_W) * 0.5 * 0.8
       );
     }
 
