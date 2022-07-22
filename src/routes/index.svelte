@@ -1,2 +1,4 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<p class="text-center">Hello! The following tests are currently available:</p>
+<div class="text-center">
+  <a href="dev/wireframe">wireframe</a>
+</div>

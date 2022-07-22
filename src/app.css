@@ -2,3 +2,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  a {
+    @apply text-blue-500 underline;
+  }
+  a:visited {
+    @apply text-purple-600;
+  }
+}

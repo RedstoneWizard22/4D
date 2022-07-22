@@ -174,7 +174,7 @@ class WireframeObject extends HyperObject {
       const material = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
         side: THREE.DoubleSide,
-        opacity: 0.3,
+        opacity: 0.2,
         transparent: true,
         clearcoat: 1.0,
         reflectivity: 1.0,

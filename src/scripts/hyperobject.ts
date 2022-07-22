@@ -63,6 +63,12 @@ class HyperObject {
   /** Sets points4D to data.vertices rotated by rotation */
   setRotation(rotation: Rotation4D): void {
     this.points4D = this.data.vertices.map((v) => v.slice());
+    this.axes = {
+      x: [1, 0, 0, 0],
+      y: [0, 1, 0, 0],
+      z: [0, 0, 1, 0],
+      w: [0, 0, 0, 1],
+    };
     this.rotate(rotation);
   }
 
