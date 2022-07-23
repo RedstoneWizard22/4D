@@ -19,8 +19,8 @@ function perspectiveProject3D(points: number[][], camDist: number): number[][] {
 /** Returns the oriented area formed by the outer product of 2 vectors (4D) */
 function orientedArea4D(v1: number[], v2: number[]): OrientedArea4D {
   // Create unit vectors from v1 and v2
-  const v1Magnitude = v1.reduce((a, b) => a + b * b, 0);
-  const v2Magnitude = v2.reduce((a, b) => a + b * b, 0);
+  const v1Magnitude = Math.sqrt(v1.reduce((a, b) => a + b * b, 0));
+  const v2Magnitude = Math.sqrt(v2.reduce((a, b) => a + b * b, 0));
   const a = v1.map((x) => x / v1Magnitude);
   const b = v2.map((x) => x / v2Magnitude);
 
@@ -38,8 +38,8 @@ function orientedArea4D(v1: number[], v2: number[]): OrientedArea4D {
 /** Returns the oriented area formed by the outer product of 2 vectors (3D) */
 function orientedArea3D(v1: number[], v2: number[]): OrientedArea3D {
   // Create unit vectors from v1 and v2
-  const v1Magnitude = v1.reduce((a, b) => a + b * b, 0);
-  const v2Magnitude = v2.reduce((a, b) => a + b * b, 0);
+  const v1Magnitude = Math.sqrt(v1.reduce((a, b) => a + b * b, 0));
+  const v2Magnitude = Math.sqrt(v2.reduce((a, b) => a + b * b, 0));
   const a = v1.map((x) => x / v1Magnitude);
   const b = v2.map((x) => x / v2Magnitude);
 
