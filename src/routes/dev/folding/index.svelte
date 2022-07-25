@@ -3,7 +3,6 @@
   import * as THREE from 'three';
   // WARNING: .js file extension is necessary here for ssr to work
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-  import WireframeObject from '../../../scripts/wireframeobject';
 
   import cell8Data from '../../../data/wireframe/cell8.json';
   import cell5Data from '../../../data/wireframe/cell5.json';
@@ -11,7 +10,7 @@
   import cell24Data from '../../../data/wireframe/cell24.json';
   import cell120Data from '../../../data/wireframe/cell120.json';
   import cell600Data from '../../../data/wireframe/cell600.json';
-  import type { Rotation4D } from 'src/types/common';
+  import FoldingObject from '../../../scripts/foldingobject';
   const shapes = {
     cell8: cell8Data,
     cell5: cell5Data,
@@ -23,19 +22,16 @@
   type Shapes = keyof typeof shapes;
   let selected: Shapes = 'cell8';
 
-  let planes = ['xy', 'xz', 'yz', 'xw', 'yw', 'zw'] as const;
-  let rotation: Rotation4D = planes.reduce((acc, plane) => {
-    acc[plane] = 0;
-    return acc;
-  }, {} as Rotation4D);
-
   let canvas: HTMLCanvasElement;
   // let height: number, width: number;
   let canvasParent: HTMLElement;
   let animationFrame: number;
 
   let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer;
-  let cube: WireframeObject;
+  let cube: FoldingObject;
+
+  let frame = 0;
+  let prevFrame = -1;
 
   onMount(() => {
     init();
@@ -83,8 +79,8 @@
     directionalLight.position.y = 10;
     scene.add(directionalLight);
 
-    cube = new WireframeObject(scene, shapes[selected]);
-    cube.update();
+    cube = new FoldingObject(scene);
+    cube.loadData(shapes[selected]);
   }
 
   let fpsInterval: number, now: number, then: number, elapsed: number;
@@ -121,9 +117,10 @@
 
       // Put your drawing code here
       let start = performance.now();
-      cube.reset();
-      cube.rotate(rotation);
-      cube.update();
+      if (frame != prevFrame) {
+        cube.update(frame);
+        prevFrame = frame;
+      }
       calcTime += performance.now() - start;
       start = performance.now();
       renderer.render(scene, camera);
@@ -151,7 +148,7 @@
     cancelAnimationFrame(animationFrame);
     window.removeEventListener('resize', resize, false);
 
-    cube.dispose();
+    // cube.dispose();
     renderer.dispose();
   }
 
@@ -165,6 +162,7 @@
     stopAnimating();
     selected = shape as Shapes;
     cube.loadData(shapes[shape as Shapes]);
+    prevFrame = -1;
     startAnimating(90);
   }
 </script>
@@ -178,19 +176,8 @@
   <div class="h-full w-4/12 p-2">
     <div class="h-full w-full bg-gray-50 shadow p-2">
       <a href="/">Home</a>
-      <div class="space-y-2">
-        {#each planes as plane}
-          <p>{plane}</p>
-          <input
-            name={plane}
-            class="w-full"
-            type="range"
-            min={-Math.PI}
-            max={Math.PI}
-            step={Math.PI / 180}
-            bind:value={rotation[plane]}
-          />
-        {/each}
+      <div>
+        <input class="w-full" type="range" min="0" max="100" bind:value={frame} />
       </div>
       <div class="space-y-2">
         <button on:click={toggleFaces}>Toggle faces</button>

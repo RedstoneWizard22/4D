@@ -119,4 +119,4 @@ class HyperObject {
 }
 
 export default HyperObject;
-export type { HyperObjectData, Rotation4D };
+export type { HyperObjectData };

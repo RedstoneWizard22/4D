@@ -1,50 +1,36 @@
 import type { OrientedArea4D, OrientedArea3D } from 'src/types/common';
+import VMath from './tools';
 
-/** Perspective project a set of 4D vectors to 3D */
-function perspectiveProject4D(points: number[][], camDist: number): number[][] {
-  return points.map((point) => {
-    const multiplier = 2 / (point[3] - camDist);
-    return [point[0] * multiplier, point[1] * multiplier, point[2] * multiplier];
-  });
-}
-
-/** Perspective project a set of 3D vectors to 2D */
-function perspectiveProject3D(points: number[][], camDist: number): number[][] {
-  return points.map((point) => {
-    const multiplier = 2 / (point[2] - camDist);
-    return [point[0] * multiplier, point[1] * multiplier];
-  });
+/** Perspective project a set of ND vectors to (N-1)D */
+function perspectiveProject(points: number[][], camDist: number, planeOffset = 2): number[][] {
+  return points.map((point) =>
+    VMath.mult(point.slice(0, point.length - 1), planeOffset / (point[point.length - 1] - camDist))
+  );
 }
 
 /** Returns the oriented area formed by the outer product of 2 vectors (4D) */
-function orientedArea4D(v1: number[], v2: number[]): OrientedArea4D {
-  // Create unit vectors from v1 and v2
-  const v1Magnitude = Math.sqrt(v1.reduce((a, b) => a + b * b, 0));
-  const v2Magnitude = Math.sqrt(v2.reduce((a, b) => a + b * b, 0));
-  const a = v1.map((x) => x / v1Magnitude);
-  const b = v2.map((x) => x / v2Magnitude);
-
-  // Compute the unit oriented area formed by the two vectors
-  return [
+function orientedArea4D(a: number[], b: number[]): OrientedArea4D {
+  return VMath.normalize([
     a[0] * b[1] - a[1] * b[0],
     a[0] * b[2] - a[2] * b[0],
     a[0] * b[3] - a[3] * b[0],
     a[1] * b[2] - a[2] * b[1],
     a[1] * b[3] - a[3] * b[1],
     a[2] * b[3] - a[3] * b[2],
-  ];
+  ]) as OrientedArea4D;
 }
 
 /** Returns the oriented area formed by the outer product of 2 vectors (3D) */
-function orientedArea3D(v1: number[], v2: number[]): OrientedArea3D {
-  // Create unit vectors from v1 and v2
-  const v1Magnitude = Math.sqrt(v1.reduce((a, b) => a + b * b, 0));
-  const v2Magnitude = Math.sqrt(v2.reduce((a, b) => a + b * b, 0));
-  const a = v1.map((x) => x / v1Magnitude);
-  const b = v2.map((x) => x / v2Magnitude);
+function orientedArea3D(a: number[], b: number[]): OrientedArea3D {
+  return VMath.normalize([
+    a[0] * b[1] - a[1] * b[0],
+    a[0] * b[2] - a[2] * b[0],
+    a[1] * b[2] - a[2] * b[1],
+  ]) as OrientedArea3D;
+}
 
-  // Compute the unit oriented area formed by the two vectors
-  return [a[0] * b[1] - a[1] * b[0], a[0] * b[2] - a[2] * b[0], a[1] * b[2] - a[2] * b[1]];
+function isProbablySingleVector(test: number[][] | number[]): test is number[] {
+  return typeof test[0] === 'number';
 }
 
 class Rotor4D {
@@ -145,20 +131,21 @@ class Rotor4D {
   }
 
   /** Rotates vector(s) in place by the rotation matrix */
-  rotate(points: number[][]): number[][];
-  rotate(points: number[]): number[];
-  rotate(points: number[][] | number[]): number[][] | number[] {
+  rotate(points: number[][], center?: number[]): number[][];
+  rotate(points: number[], center?: number[]): number[];
+  rotate(points: number[][] | number[], center?: number[]): number[][] | number[] {
     if (this._rotationMatrixDirty) {
       this._calculateRotationMatrix();
       this._rotationMatrixDirty = false;
     }
 
-    if (typeof points[0] === 'number') {
-      const rotated: number[] = [0, 0, 0, 0];
-      for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 4; j++) {
-          rotated[i] += this._rotationMatrix[i][j] * (points as number[])[j];
-        }
+    if (isProbablySingleVector(points)) {
+      const rotated = VMath.transform(
+        center ? VMath.sub(center, points) : points,
+        this._rotationMatrix
+      );
+      if (center) {
+        VMath.translate(rotated, center);
       }
       return rotated;
     } else {
@@ -222,20 +209,21 @@ class Rotor3D {
   }
 
   /** Rotates vector(s) in place by the rotation matrix */
-  rotate(points: number[][]): number[][];
-  rotate(points: number[]): number[];
-  rotate(points: number[][] | number[]): number[][] | number[] {
+  rotate(points: number[][], center?: number[]): number[][];
+  rotate(points: number[], center?: number[]): number[];
+  rotate(points: number[][] | number[], center?: number[]): number[][] | number[] {
     if (this._rotationMatrixDirty) {
       this._calculateRotationMatrix();
       this._rotationMatrixDirty = false;
     }
 
-    if (typeof points[0] === 'number') {
-      const rotated: number[] = [0, 0, 0];
-      for (let i = 0; i < 3; i++) {
-        for (let j = 0; j < 3; j++) {
-          rotated[i] += this._rotationMatrix[i][j] * (points as number[])[j];
-        }
+    if (isProbablySingleVector(points)) {
+      const rotated = VMath.transform(
+        center ? VMath.sub(center, points) : points,
+        this._rotationMatrix
+      );
+      if (center) {
+        VMath.translate(rotated, center);
       }
       return rotated;
     } else {
@@ -244,11 +232,4 @@ class Rotor3D {
   }
 }
 
-export {
-  perspectiveProject4D,
-  perspectiveProject3D,
-  orientedArea4D,
-  orientedArea3D,
-  Rotor4D,
-  Rotor3D,
-};
+export { perspectiveProject, orientedArea4D, orientedArea3D, Rotor4D, Rotor3D };

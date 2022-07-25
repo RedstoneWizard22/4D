@@ -32,7 +32,8 @@ List of vertex pairs that form an edge
 
 ### faces
 
-List of vertex sets that enclose a face
+List of vertex sets that enclose a face. The vertices are listed in traversal order, so any adjacent pair of vertices is an edge of the face. Faces can have any number of vertices > 3,
+faces of different size for the same object are allowed.
 
 ```
 "faces":[
