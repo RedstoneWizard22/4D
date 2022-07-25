@@ -130,7 +130,7 @@ class WireframeRenderer {
       const material = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
         side: THREE.DoubleSide,
-        opacity: 0.2,
+        opacity: 0.15,
         transparent: true,
         clearcoat: 1.0,
         reflectivity: 1.0,
@@ -193,9 +193,9 @@ class WireframeRenderer {
       // Update colors
       if (color) {
         // @ts-expect-error: Typescript doesn't know about the custom shader
-        this.meshes.edges[i].material.userData.color1.value.g = Math.abs(color[edge[0]]);
+        this.meshes.edges[i].material.userData.color1.value.setHSL(color[edge[0]] % 1, 1, 0.5);
         // @ts-expect-error: Typescript doesn't know about the custom shader
-        this.meshes.edges[i].material.userData.color2.value.g = Math.abs(color[edge[1]]);
+        this.meshes.edges[i].material.userData.color2.value.setHSL(color[edge[1]] % 1, 1, 0.5);
       }
     }
 
@@ -208,7 +208,7 @@ class WireframeRenderer {
       // Update colors
       if (color) {
         // @ts-expect-error: Typescript doesn't know about our custom shader
-        this.meshes.vertices[i].material.userData.color.value.g = Math.abs(color[i]);
+        this.meshes.vertices[i].material.userData.color.value.setHSL(color[i] % 1, 1, 0.5);
       }
     }
 

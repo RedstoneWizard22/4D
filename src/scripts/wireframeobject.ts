@@ -37,7 +37,7 @@ class WireframeObject extends HyperObject {
   update(): void {
     const points3D = perspectiveProject(this.points4D, -1.5);
     const MAX_W = 1;
-    const color = this.points4D.map((p) => ((p[3] + MAX_W) / MAX_W) * 0.5);
+    const color = this.points4D.map((p) => (((p[3] + MAX_W) / MAX_W) * 30) / 360);
 
     this.renderer.update(points3D, color);
   }

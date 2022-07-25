@@ -97,6 +97,8 @@ class FoldingObject {
         tree.center = VMath.mean(...volumeVerts.map((i) => data.vertices[i]));
 
         // Calculate anchor
+        // This method is likely to only work for regular 4D shapes
+        // I can't think of a better way to do this for now though
         tree.anchor =
           joiningFace === undefined
             ? [0, 0, 0, 0]
@@ -190,11 +192,6 @@ class FoldingObject {
     };
     const v3 = pick();
 
-    // console.log(v1, v2, v3);
-    console.log('v1', v1);
-    console.log('v2', v2);
-    console.log('v3', v3);
-
     function orientedVolume4D(u: number[], v: number[], w: number[]): number[] {
       const oa = orientedArea4D(u, v);
       return VMath.normalize([
@@ -208,8 +205,6 @@ class FoldingObject {
     const ov = orientedVolume4D(v1, v2, v3);
     const normal = [-ov[3], ov[2], -ov[1], ov[0]];
     const target = [0, 0, 0, 1];
-
-    console.log('normal', normal);
 
     if (!VMath.parallel(normal, target)) {
       const angle = VMath.angle(normal, target);
@@ -239,8 +234,8 @@ class FoldingObject {
       }
     };
 
-    // forceAllInTreeToBePositiveW(tree);
-    forceAllInTreeToBeNegativeW(tree);
+    forceAllInTreeToBePositiveW(tree);
+    // forceAllInTreeToBeNegativeW(tree);
     // Finally translate so that the root node is centered at the origin.
     translateAllInTree(tree, VMath.mult(root.center, -1));
 
@@ -284,7 +279,8 @@ class FoldingObject {
       tree = treeCopy;
     }
 
-    this.renderer.init(vertices.length, faces, data.optimalThickness * 0.9);
+    // this.renderer.init(vertices.length, faces, data.optimalThickness * 0.8);
+    this.renderer.init(vertices.length, faces, data.optimalThickness * 0.6);
   }
 
   update(frame: number) {
@@ -294,9 +290,11 @@ class FoldingObject {
     }
 
     const points4D = this.frames[frame];
-    const points3D = perspectiveProject(points4D, -3).map((p) => VMath.mult(p, 1.5));
+    // const points3D = perspectiveProject(points4D, -3).map((p) => VMath.mult(p, 1.5));
+    const points3D = perspectiveProject(points4D, -1.5).map((p) => VMath.mult(p, 0.75));
     const MAX_W = 1;
-    const color = points4D.map((p) => ((p[3] + MAX_W) / MAX_W) * 0.5 + 0.25);
+    // const color = points4D.map((p) => (((p[3] + MAX_W) / MAX_W) * 30 + 25) / 360);
+    const color = points4D.map((p) => (((p[3] + MAX_W) / MAX_W) * -30 + 90) / 360);
 
     this.renderer.update(points3D, color);
   }
