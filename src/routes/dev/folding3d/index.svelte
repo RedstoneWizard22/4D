@@ -3,19 +3,23 @@
   import * as THREE from 'three';
   // WARNING: .js file extension is necessary here for ssr to work
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+  import FoldingObject3D from '../../../scripts/foldingobject3d';
 
   import tetrahedron from '../../../data/wireframe3d/tetrahedron.json';
   import cubeData from '../../../data/wireframe3d/cube.json';
   import octahedron from '../../../data/wireframe3d/octahedron.json';
   import icosahedron from '../../../data/wireframe3d/icosahedron.json';
   import dodecahedron from '../../../data/wireframe3d/dodecahedron.json';
-  import FoldingObject3D from '../../../scripts/foldingobject3d';
+  import cone from '../../../data/wireframe3d/cone.json';
+  import sphere from '../../../data/wireframe3d/sphere.json';
   const shapes = {
     tetrahedron,
     cube: cubeData,
     octahedron,
     icosahedron,
     dodecahedron,
+    cone,
+    sphere,
   };
   type Shapes = keyof typeof shapes;
   let selected: Shapes = 'cube';
