@@ -1,29 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type * as THREE from 'three';
-import { orientedArea3D, Rotor3D } from './4dtools';
+import { Rotor3D } from './4dtools';
 import VMath from './tools';
 import { WireframeRenderer } from './wireframerenderer';
 
 interface HyperObjectData3D {
   vertices: number[][];
-  edges: number[][];
   faces: number[][];
-}
-
-function getEdgesFromFaces(faces: number[][]) {
-  const edges: number[][] = [];
-  const usedEdges = new Set<string>();
-  for (const face of faces) {
-    for (let i = 0; i < face.length; i++) {
-      const edge = [face[i], face[(i + 1) % face.length]].sort();
-      const edgeStr = edge.join(',');
-      if (!usedEdges.has(edgeStr)) {
-        edges.push(edge);
-        usedEdges.add(edgeStr);
-      }
-    }
-  }
-  return edges;
 }
 
 class FoldingObject3D {
@@ -41,36 +24,23 @@ class FoldingObject3D {
 
   /** Loades err... Data */
   loadData(data: HyperObjectData3D): void {
-    data.edges.forEach((edge) => edge.sort());
-    const edgeMap = new Map<string, number>(data.edges.map((edge, i) => [edge.join(','), i]));
-    const faceEdges = data.faces.map((face) => {
-      const edges = [];
-      for (let i = 0; i < face.length; i++) {
-        const edge = [face[i], face[(i + 1) % face.length]].sort();
-        edges.push(edgeMap.get(edge.join(','))!);
-      }
-      return edges;
-    });
-
-    const faceNeighbours = faceEdges.map((face, i) => {
+    /// Step1: Figure out which faces have which neighbours
+    const faceNeighbours = data.faces.map((face, i) => {
       const neighbours = [];
       for (let j = 0; j < data.faces.length; j++) {
         if (i != j) {
-          const otherFace = faceEdges[j];
-          for (const edge of otherFace) {
-            if (face.includes(edge)) {
-              neighbours.push({
-                index: j,
-                commonEdge: edge,
-              });
+          const intersection = face.filter((v) => data.faces[j].includes(v));
+          if (intersection.length > 1) {
+            if (intersection.length == 2) {
+              neighbours.push(j);
+            } else {
+              throw new Error('Something funny with your data');
             }
           }
         }
       }
       return neighbours;
     });
-
-    console.log(faceNeighbours);
 
     let vertices: number[][] = [];
     const faces: number[][] = [];
@@ -86,7 +56,6 @@ class FoldingObject3D {
       const visited = new Set<number>([source]);
       const queue: {
         index: number;
-        joiningEdge?: number;
         parentVertexMap: Map<number, number>;
         tree: Tree;
       }[] = [];
@@ -104,17 +73,18 @@ class FoldingObject3D {
 
       while (queue.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const { index, joiningEdge, parentVertexMap, tree } = queue.shift()!;
+        const { index, parentVertexMap, tree } = queue.shift()!;
 
         const vertexMap = new Map<number, number>();
 
         faces.push([]);
+        const toSum = [];
         for (const vIdx of data.faces[index]) {
-          if (joiningEdge !== undefined && data.edges[joiningEdge].includes(vIdx)) {
-            const tmp = parentVertexMap.get(vIdx);
-            if (tmp === undefined) throw new Error('Oh shit');
+          const tmp = parentVertexMap.get(vIdx);
+          if (tmp !== undefined) {
             faces[faces.length - 1].push(tmp);
             vertexMap.set(vIdx, tmp);
+            toSum.push(vertices[tmp]);
           } else {
             faces[faces.length - 1].push(vertices.length);
             tree.myVertices.push(vertices.length);
@@ -127,15 +97,19 @@ class FoldingObject3D {
         tree.center = VMath.mean(...data.faces[index].map((i) => data.vertices[i]));
 
         // Calculate anchor
-        tree.anchor =
-          joiningEdge === undefined
-            ? [0, 0, 0]
-            : VMath.mean(...data.edges[joiningEdge].map((i) => data.vertices[i]));
+        if (toSum.length != 0) {
+          const v1 = VMath.sub(toSum[0], tree.center);
+          const v2 = VMath.sub(toSum[0], toSum[1]);
+          const v3 = VMath.project(v1, v2);
+          tree.anchor = VMath.sum(toSum[0], v3);
+        } else {
+          tree.anchor = [0, 0, 0];
+        }
 
         // Fill in children
         faceNeighbours[index].forEach((n) => {
-          if (!visited.has(n.index)) {
-            visited.add(n.index);
+          if (!visited.has(n)) {
+            visited.add(n);
             const subtree = {
               myVertices: [],
               center: [],
@@ -144,8 +118,7 @@ class FoldingObject3D {
             };
             tree.children.push(subtree);
             queue.push({
-              index: n.index,
-              joiningEdge: n.commonEdge,
+              index: n,
               parentVertexMap: vertexMap,
               tree: subtree,
             });
@@ -156,7 +129,7 @@ class FoldingObject3D {
       return treeRoot;
     };
 
-    let tree = genTree(1);
+    let tree = genTree(0);
 
     const rotateAllInTree = (tree: Tree, center?: number[]): void => {
       for (const vertex of tree.myVertices) {
@@ -242,12 +215,6 @@ class FoldingObject3D {
       return vertices.map((v) => [...v]);
     };
 
-    const edges = getEdgesFromFaces(faces);
-
-    console.log({ faceNeighbours });
-    console.log(tree);
-    console.log({ vertices, edges, faces });
-
     this.frames = [];
     const FRAME_COUNT = 100;
     for (let i = 0; i <= FRAME_COUNT; i++) {
@@ -259,11 +226,7 @@ class FoldingObject3D {
       tree = treeCopy;
     }
 
-    // unfold(tree, 1);
-    // this.frames = [vertices];
-
-    this.renderer.init(vertices.length, edges, faces, 0.05);
-    this.renderer.update(vertices);
+    this.renderer.init(vertices.length, faces, 0.05);
   }
 
   update(frame: number) {

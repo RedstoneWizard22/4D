@@ -3,7 +3,6 @@ import { Rotor4D } from './4dtools';
 
 interface HyperObjectData {
   vertices: number[][];
-  edges: number[][];
   faces: number[][];
   volumes: number[][];
   optimalThickness: number;
@@ -26,7 +25,6 @@ class HyperObject {
     } else {
       this.data = {
         vertices: [],
-        edges: [],
         faces: [],
         volumes: [],
         optimalThickness: 0,

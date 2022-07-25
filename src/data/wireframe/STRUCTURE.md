@@ -16,20 +16,6 @@ List of coordinates of the vertices, these should all be normalised so that the 
 ],
 ```
 
-### edges
-
-List of vertex pairs that form an edge
-
-```
-"edges":[
-  [Int, Int],
-  [Int, Int],
-  [Int, Int],
-  [Int, Int],
-  ...
-],
-```
-
 ### faces
 
 List of vertex sets that enclose a face. The vertices are listed in traversal order, so any adjacent pair of vertices is an edge of the face. Faces can have any number of vertices > 3,

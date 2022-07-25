@@ -20,7 +20,7 @@ class WireframeObject extends HyperObject {
   /** Loades err... Data */
   loadData(data: HyperObjectData): void {
     super.loadData(data);
-    this.renderer.init(data.vertices.length, data.edges, data.faces, data.optimalThickness);
+    this.renderer.init(data.vertices.length, data.faces, data.optimalThickness);
   }
 
   /** Toggles visibility of all face meshes */

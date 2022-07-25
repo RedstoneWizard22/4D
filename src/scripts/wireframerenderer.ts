@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as THREE from 'three';
+import { getEdgesFromFaces } from './etc';
 import VMath from './tools';
 
 class WireframeRenderer {
@@ -42,10 +43,11 @@ class WireframeRenderer {
   }
 
   /** Creates meshes that make up the wireframe and adds them to scene */
-  init(vertexCount: number, edges: number[][], faces: number[][], thickness: number): void {
+  init(vertexCount: number, faces: number[][], thickness: number): void {
     // Dispose of all old meshes and remove them from the scene
     this.dispose();
 
+    const edges = getEdgesFromFaces(faces);
     this.edges = edges;
     this.faces = faces;
 
