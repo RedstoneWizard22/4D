@@ -3,43 +3,61 @@ import * as THREE from 'three';
 import { getEdgesFromFaces } from './etc';
 import VMath from './tools';
 
+function splitFaceIntoTriangles(face: number[]) {
+  const triangles = [];
+  for (let i = 0; i < face.length - 2; i++) {
+    triangles.push([face[0], face[i + 1], face[i + 2]]);
+  }
+  return triangles;
+}
+
 class WireframeRenderer {
-  visible: boolean;
-  facesVisible: boolean;
-  meshes: {
-    vertices: THREE.Mesh[];
-    edges: THREE.Mesh[];
-    faces: THREE.Mesh[];
-  };
+  visble = true;
+  facesVisible = true;
+  vertex:
+    | {
+        meshes: THREE.Mesh[];
+      }
+    | undefined;
+  edge:
+    | {
+        data: number[][];
+        meshes: THREE.Mesh[];
+      }
+    | undefined;
+  face:
+    | {
+        data: number[][];
+        triangles: number[][];
+        mesh: THREE.Mesh;
+        positionAttribute: THREE.Float32BufferAttribute;
+        normalAttribute: THREE.Float32BufferAttribute;
+      }
+    | undefined;
   scene: THREE.Scene;
-  edges: number[][] | undefined;
-  faces: number[][] | undefined;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
-    this.visible = true;
-    this.facesVisible = true;
-
-    this.meshes = {
-      vertices: [],
-      edges: [],
-      faces: [],
-    };
   }
 
   /** Toggles visibility of all face meshes */
   setFacesVisible(visible: boolean): void {
+    if (!this.face) throw new Error('Object not initialized');
     this.facesVisible = visible;
-    this.meshes.faces.forEach((m) => (m.visible = visible));
+    if (this.visble) {
+      this.face.mesh.visible = visible;
+    }
   }
 
   /** Toggles visibility of all meshes but only toggles face meshes if facesVisible is true */
   setVisible(visible: boolean): void {
-    this.meshes.vertices.forEach((m) => (m.visible = visible));
-    this.meshes.edges.forEach((m) => (m.visible = visible));
+    if (!this.vertex || !this.edge || !this.face) throw new Error('Object not initialized');
+    this.vertex.meshes.forEach((m) => (m.visible = visible));
+    this.edge.meshes.forEach((m) => (m.visible = visible));
     if (this.facesVisible) {
-      this.meshes.faces.forEach((m) => (m.visible = visible));
+      this.face.mesh.visible = visible;
     }
+    this.visble = visible;
   }
 
   /** Creates meshes that make up the wireframe and adds them to scene */
@@ -47,17 +65,14 @@ class WireframeRenderer {
     // Dispose of all old meshes and remove them from the scene
     this.dispose();
 
-    const edges = getEdgesFromFaces(faces);
-    this.edges = edges;
-    this.faces = faces;
+    /// Create edges
+    this.edge = { data: getEdgesFromFaces(faces), meshes: [] };
 
-    // Define geometry for edges and vertices
     const edgeGeometry = new THREE.CylinderBufferGeometry(thickness, thickness, 1, 20);
     edgeGeometry.rotateX(-Math.PI / 2);
-    const vertexGeometry = new THREE.SphereBufferGeometry(thickness, 20, 20);
 
     // Create a mesh for each edge
-    for (let i = 0; i < edges.length; i++) {
+    for (let i = 0; i < this.edge.data.length; i++) {
       const mat = new THREE.MeshPhongMaterial({
         color: 0x2194ce,
         shininess: 100,
@@ -87,8 +102,14 @@ class WireframeRenderer {
       mat.userData.color2 = color2;
 
       const mesh = new THREE.Mesh(edgeGeometry, mat);
-      this.meshes.edges.push(mesh);
+      this.edge.meshes.push(mesh);
+      this.scene.add(mesh);
     }
+
+    /// Create vertices
+    this.vertex = { meshes: [] };
+
+    const vertexGeometry = new THREE.SphereBufferGeometry(thickness, 20, 20);
 
     // Create a mesh for each vertex
     for (let i = 0; i < vertexCount; i++) {
@@ -114,77 +135,78 @@ class WireframeRenderer {
       mat.userData.color = color;
 
       const mesh = new THREE.Mesh(vertexGeometry, mat);
-      this.meshes.vertices.push(mesh);
+      this.vertex.meshes.push(mesh);
+      this.scene.add(mesh);
     }
 
-    // Create a mesh for each face
-    for (const face of faces) {
-      const shape = new THREE.Shape();
-      shape.moveTo(0, 0);
-      for (let i = 0; i < face.length - 1; i++) {
-        shape.lineTo(1, i);
-      }
+    /// Create faces
+    const triangles = faces.map(splitFaceIntoTriangles).flat();
 
-      // Create gemotry and mesh
-      const geometry = new THREE.ShapeBufferGeometry(shape);
-      const material = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        side: THREE.DoubleSide,
-        opacity: 0.15,
-        transparent: true,
-        clearcoat: 1.0,
-        reflectivity: 1.0,
-        roughness: 0.0,
-        flatShading: true,
-        premultipliedAlpha: true,
-        precision: 'highp',
-        depthWrite: false,
-      });
+    const geometry = new THREE.BufferGeometry();
+    const positions: number[] = [];
+    const normals: number[] = [];
 
-      const mesh = new THREE.Mesh(geometry, material);
-      this.meshes.faces.push(mesh);
+    for (let i = 0; i < triangles.length; i++) {
+      positions.push(...VMath.random(9, 0, 1));
+      normals.push(...VMath.random(9, 0, 1));
     }
 
-    // Add meshes to scene
-    this.meshes.vertices.forEach((m) => this.scene.add(m));
-    this.meshes.edges.forEach((m) => this.scene.add(m));
-    this.meshes.faces.forEach((m) => this.scene.add(m));
+    const positionAttribute = new THREE.Float32BufferAttribute(positions, 3);
+    const normalAttribute = new THREE.Float32BufferAttribute(normals, 3);
+    geometry.setAttribute('position', positionAttribute);
+    geometry.setAttribute('normal', normalAttribute);
 
-    // Set visibility of meshes to true
-    this.setVisible(true);
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      side: THREE.DoubleSide,
+      opacity: 0.15,
+      transparent: true,
+      clearcoat: 1.0,
+      reflectivity: 1.0,
+      roughness: 0.0,
+      flatShading: true,
+      premultipliedAlpha: true,
+      precision: 'highp',
+      depthWrite: false,
+    });
 
-    // Set visibility of faces
+    const mesh = new THREE.Mesh(geometry, material);
+    this.scene.add(mesh);
+
+    this.face = {
+      data: faces,
+      triangles,
+      mesh,
+      positionAttribute,
+      normalAttribute,
+    };
+
+    // Set visibility of everything
+    this.setVisible(this.visble);
     this.setFacesVisible(this.facesVisible);
   }
 
   /** Updates position and rotation of all meshes to the correct values */
   update(points: number[][], color?: number[]): void {
-    // const points3D = perspectiveProject4D(vertices, -1.5);
-    // const MAX_W = 1;
-
-    if (!this.edges || !this.faces) {
-      console.error('WireframeRenderer not initialized');
-      return;
-    }
+    if (!this.vertex || !this.edge || !this.face) throw new Error('Object not initialized');
 
     // Update edges
-    const edgeCount = this.edges.length;
-    for (let i = 0; i < edgeCount; i++) {
-      const edge = this.edges[i];
+    for (let i = 0; i < this.edge.data.length; i++) {
+      const edge = this.edge.data[i];
 
       const vertex1 = points[edge[0]];
       const vertex2 = points[edge[1]];
 
       // Update position
-      this.meshes.edges[i].scale.z = VMath.distance(vertex1, vertex2);
+      this.edge.meshes[i].scale.z = VMath.distance(vertex1, vertex2);
 
       const newPosx = (vertex1[0] + vertex2[0]) / 2;
       const newPosy = (vertex1[1] + vertex2[1]) / 2;
       const newPosz = (vertex1[2] + vertex2[2]) / 2;
 
-      this.meshes.edges[i].position.set(newPosx, newPosy, newPosz);
+      this.edge.meshes[i].position.set(newPosx, newPosy, newPosz);
 
-      this.meshes.edges[i].lookAt(
+      this.edge.meshes[i].lookAt(
         vertex1[0] - vertex2[0] + newPosx,
         vertex1[1] - vertex2[1] + newPosy,
         vertex1[2] - vertex2[2] + newPosz
@@ -193,70 +215,64 @@ class WireframeRenderer {
       // Update colors
       if (color) {
         // @ts-expect-error: Typescript doesn't know about the custom shader
-        this.meshes.edges[i].material.userData.color1.value.setHSL(color[edge[0]] % 1, 1, 0.5);
+        this.edge.meshes[i].material.userData.color1.value.setHSL(color[edge[0]] % 1, 1, 0.5);
         // @ts-expect-error: Typescript doesn't know about the custom shader
-        this.meshes.edges[i].material.userData.color2.value.setHSL(color[edge[1]] % 1, 1, 0.5);
+        this.edge.meshes[i].material.userData.color2.value.setHSL(color[edge[1]] % 1, 1, 0.5);
       }
     }
 
     // Update vertices
-    const vertexCount = points.length;
-    for (let i = 0; i < vertexCount; i++) {
+    for (let i = 0; i < points.length; i++) {
       // Update position
-      this.meshes.vertices[i].position.set(...(points[i] as [number, number, number]));
+      this.vertex.meshes[i].position.set(...(points[i] as [number, number, number]));
 
       // Update colors
       if (color) {
         // @ts-expect-error: Typescript doesn't know about our custom shader
-        this.meshes.vertices[i].material.userData.color.value.setHSL(color[i] % 1, 1, 0.5);
+        this.vertex.meshes[i].material.userData.color.value.setHSL(color[i] % 1, 1, 0.5);
       }
     }
 
     // Update faces
-    const faceCount = this.faces.length;
-    for (let i = 0; i < faceCount; i++) {
-      const face = this.faces[i];
+    for (let i = 0; i < this.face.triangles.length; i++) {
+      const v1 = points[this.face.triangles[i][0]];
+      const v2 = points[this.face.triangles[i][1]];
+      const v3 = points[this.face.triangles[i][2]];
 
-      // Find face center
-      const center = VMath.mean(...face.map((i) => points[i])) as [number, number, number];
+      const normal = VMath.cross(VMath.sub(v2, v1), VMath.sub(v3, v1));
 
-      // Get face mesh
-      const mesh = this.meshes.faces[i];
-
-      // Update face position
-      mesh.position.set(...center);
-
-      // Update face vertices
-      let k = 0;
-      for (let j = 0; j < face.length; j++) {
-        // @ts-expect-error: Tis ok as long as you set needsUpdate to true
-        mesh.geometry.attributes.position.array[k] = points[face[j]][0] - center[0];
-        // @ts-expect-error: Tis ok as long as you set needsUpdate to true
-        mesh.geometry.attributes.position.array[k + 1] = points[face[j]][1] - center[1];
-        // @ts-expect-error: Tis ok as long as you set needsUpdate to true
-        mesh.geometry.attributes.position.array[k + 2] = points[face[j]][2] - center[2];
-
-        k += 3;
+      // This is the fastest way to update the elements
+      for (let j = 0; j < 3; j++) {
+        //@ts-expect-error: Probably fine
+        this.face.positionAttribute.array[i * 9 + j] = v1[j];
+        //@ts-expect-error: Probably fine
+        this.face.positionAttribute.array[i * 9 + j + 3] = v2[j];
+        //@ts-expect-error: Probably fine
+        this.face.positionAttribute.array[i * 9 + j + 6] = v3[j];
+        for (let k = 0; k < 3; k++) {
+          //@ts-expect-error: Probably fine
+          this.face.normalAttribute.array[i * 9 + j * 3 + k] = normal[k];
+        }
       }
-      mesh.geometry.attributes.position.needsUpdate = true;
     }
+    this.face.positionAttribute.needsUpdate = true;
+    this.face.normalAttribute.needsUpdate = true;
   }
 
   /** Deletes all meshes, use to dispose of object */
   dispose(): void {
-    this.meshes.vertices.forEach((m) => this.scene.remove(m));
-    this.meshes.edges.forEach((m) => this.scene.remove(m));
-    this.meshes.faces.forEach((m) => this.scene.remove(m));
+    if (!this.vertex || !this.edge || !this.face) return;
+    this.vertex.meshes.forEach((m) => this.scene.remove(m));
+    this.edge.meshes.forEach((m) => this.scene.remove(m));
+    this.scene.remove(this.face.mesh);
 
-    this.meshes.vertices.forEach((m) => m.geometry.dispose());
-    this.meshes.edges.forEach((m) => m.geometry.dispose());
-    this.meshes.faces.forEach((m) => m.geometry.dispose());
+    this.vertex.meshes.forEach((m) => m.geometry.dispose());
+    this.edge.meshes.forEach((m) => m.geometry.dispose());
+    this.face.mesh.geometry.dispose();
 
-    this.meshes = {
-      vertices: [],
-      edges: [],
-      faces: [],
-    };
+    this.vertex = undefined;
+    this.edge = undefined;
+    this.face = undefined;
   }
 }
 

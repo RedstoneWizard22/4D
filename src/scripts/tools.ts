@@ -158,6 +158,15 @@ const VMath = {
   parallel(a: number[], b: number[]): boolean {
     return approx(Math.abs(VMath.dot(a, b)), Math.abs(VMath.norm(a) * VMath.norm(b)));
   },
+
+  /** Generate a random vector of the given length, with values between a and b */
+  random(length: number, a: number, b: number): number[] {
+    const result = [];
+    for (let i = 0; i < length; i++) {
+      result.push(Math.random() * (b - a) + a);
+    }
+    return result;
+  },
 };
 
 export default VMath;
