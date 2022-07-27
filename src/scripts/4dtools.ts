@@ -1,4 +1,3 @@
-import type { OrientedArea4D, OrientedArea3D } from 'src/types/common';
 import VMath from './tools';
 
 /** Perspective project a set of ND vectors to (N-1)D */
@@ -8,25 +7,50 @@ function perspectiveProject(points: number[][], camDist: number, planeOffset = 2
   );
 }
 
-/** Returns the oriented area formed by the outer product of 2 vectors (4D) */
-function orientedArea4D(a: number[], b: number[]): OrientedArea4D {
-  return VMath.normalize([
-    a[0] * b[1] - a[1] * b[0],
-    a[0] * b[2] - a[2] * b[0],
-    a[0] * b[3] - a[3] * b[0],
-    a[1] * b[2] - a[2] * b[1],
-    a[1] * b[3] - a[3] * b[1],
-    a[2] * b[3] - a[3] * b[2],
-  ]) as OrientedArea4D;
+/** Returns the oriented area formed by the outer product of 2 vectors
+ *
+ * Bivector element order will be as follows:
+ * - n=1; [e12]
+ * - n=2; [e12, e13, e23]
+ * - n=3; [e12, e13, e14, e23, e24, e34]
+ * - etc.
+ */
+function orientedArea(u: number[], v: number[]): number[] {
+  const n = u.length;
+  const oa = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      oa.push(u[i] * v[j] - u[j] * v[i]);
+    }
+  }
+  return oa;
 }
 
-/** Returns the oriented area formed by the outer product of 2 vectors (3D) */
-function orientedArea3D(a: number[], b: number[]): OrientedArea3D {
-  return VMath.normalize([
-    a[0] * b[1] - a[1] * b[0],
-    a[0] * b[2] - a[2] * b[0],
-    a[1] * b[2] - a[2] * b[1],
-  ]) as OrientedArea3D;
+/** Returns the oriented volume formed by the outer product of 3 vectors
+ *
+ * Trivector element order will be as follows:
+ * - n=2; [e123]
+ * - n=3; [e123, e124, e134, e234]
+ * - etc.
+ */
+function orientedVolume(u: number[], v: number[], w: number[]): number[] {
+  const n = u.length;
+  const ov = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      for (let k = j + 1; k < n; k++) {
+        ov.push(
+          u[i] * v[j] * w[k] +
+            u[j] * v[k] * w[i] +
+            u[k] * v[i] * w[j] -
+            u[i] * v[k] * w[j] -
+            u[j] * v[i] * w[k] -
+            u[k] * v[j] * w[i]
+        );
+      }
+    }
+  }
+  return ov;
 }
 
 function isProbablySingleVector(test: number[][] | number[]): test is number[] {
@@ -37,7 +61,7 @@ class Rotor4D {
   // Angle of rotation
   _theta = 0;
   // The unit oriented area lying in the plane of rotation
-  _plane: OrientedArea4D = [0, 0, 0, 0, 0, 0];
+  _plane = [0, 0, 0, 0, 0, 0];
   // The rotation matrix
   _rotationMatrix = [
     [1, 0, 0, 0],
@@ -50,7 +74,7 @@ class Rotor4D {
 
   /** Sets the plane of rotation, given two vectors spanning it */
   setPlane(v1: number[], v2: number[]): void {
-    this._plane = orientedArea4D(v1, v2);
+    this._plane = VMath.normalize(orientedArea(v1, v2));
     this._rotationMatrixDirty = true;
   }
 
@@ -158,7 +182,7 @@ class Rotor3D {
   // Angle of rotation
   _theta = 0;
   // The unit oriented area lying in the plane of rotation
-  _plane: OrientedArea3D = [0, 0, 0];
+  _plane = [0, 0, 0];
   // The rotation matrix
   _rotationMatrix = [
     [1, 0, 0],
@@ -170,7 +194,7 @@ class Rotor3D {
 
   /** Sets the plane of rotation, given two vectors spanning it */
   setPlane(v1: number[], v2: number[]): void {
-    this._plane = orientedArea3D(v1, v2);
+    this._plane = VMath.normalize(orientedArea(v1, v2));
     this._rotationMatrixDirty = true;
   }
 
@@ -232,4 +256,4 @@ class Rotor3D {
   }
 }
 
-export { perspectiveProject, orientedArea4D, orientedArea3D, Rotor4D, Rotor3D };
+export { perspectiveProject, orientedArea, orientedVolume, Rotor4D, Rotor3D };

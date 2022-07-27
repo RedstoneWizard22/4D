@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type * as THREE from 'three';
-import { orientedArea4D, perspectiveProject, Rotor4D } from './4dtools';
+import { orientedArea, orientedVolume, perspectiveProject, Rotor4D } from './4dtools';
 import type { HyperObjectData } from './hyperobject';
 import VMath from './tools';
 import { WireframeRenderer } from './wireframerenderer';
@@ -175,34 +175,19 @@ class FoldingObject {
     const v2 = pick();
     // Now pick a non-coplanar vertex as v3
     pick = (): number[] => {
-      const v12plane = orientedArea4D(v1, v2);
+      const v12plane = orientedArea(v1, v2);
       for (let i = 2; i < root.myVertices.length; i++) {
         const potential = vertices[root.myVertices[i]].slice();
-        const v13plane = orientedArea4D(v1, potential);
-        if (!coplanar(v12plane, v13plane)) {
+        const v13plane = orientedArea(v1, potential);
+        if (!VMath.parallel(v12plane, v13plane)) {
           return potential;
         }
       }
       throw new Error('Could not find a non-coplanar vertex');
-
-      function coplanar(a: number[], b: number[]): boolean {
-        const bInv = VMath.mult(b, -1);
-        return VMath.equal(a, b) || VMath.equal(a, bInv);
-      }
     };
     const v3 = pick();
 
-    function orientedVolume4D(u: number[], v: number[], w: number[]): number[] {
-      const oa = orientedArea4D(u, v);
-      return VMath.normalize([
-        w[2] * oa[0] - w[1] * oa[1] + w[0] * oa[3],
-        w[3] * oa[0] - w[1] * oa[2] + w[0] * oa[4],
-        w[3] * oa[1] - w[2] * oa[2] + w[0] * oa[5],
-        w[3] * oa[3] - w[2] * oa[4] + w[1] * oa[5],
-      ]);
-    }
-
-    const ov = orientedVolume4D(v1, v2, v3);
+    const ov = orientedVolume(v1, v2, v3);
     const normal = [-ov[3], ov[2], -ov[1], ov[0]];
     const target = [0, 0, 0, 1];
 
