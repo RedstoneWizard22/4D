@@ -2,49 +2,6 @@ function approx(a: number, b: number, epsilon = 1e-15): boolean {
   return Math.abs(a - b) < epsilon;
 }
 
-/** Find the reduced row echelon form of a matrix */
-function reducedRowEchelonForm(matrix: number[][]): number[][] {
-  // I stole this from here:
-  // https://github.com/substack/rref
-  const A = matrix.map((row) => row.slice());
-
-  const rows = A.length;
-  const columns = A[0].length;
-
-  let lead = 0;
-  for (let k = 0; k < rows; k++) {
-    if (columns <= lead) throw new Error('Matrix is rank deficient');
-
-    let i = k;
-    while (A[i][lead] === 0) {
-      i++;
-      if (rows === i) {
-        i = k;
-        lead++;
-        if (columns === lead) throw new Error('Matrix is rank deficient');
-      }
-    }
-    const irow = A[i],
-      krow = A[k];
-    (A[i] = krow), (A[k] = irow);
-
-    let val = A[k][lead];
-    for (let j = 0; j < columns; j++) {
-      A[k][j] /= val;
-    }
-
-    for (let i = 0; i < rows; i++) {
-      if (i === k) continue;
-      val = A[i][lead];
-      for (let j = 0; j < columns; j++) {
-        A[i][j] -= val * A[k][j];
-      }
-    }
-    lead++;
-  }
-  return A;
-}
-
 /** Utility functions for operations on vectors */
 const VMath = {
   /** Subtracts vector a from vector b and returns the result */
@@ -125,26 +82,6 @@ const VMath = {
     return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   },
 
-  /** Returns the normal to the hyperplane spanned by the given vectors */
-  hyperplaneNormal(...vectors: number[][]): number[] {
-    if (vectors.length === 1) {
-      return vectors[0].slice();
-    }
-    const rref = reducedRowEchelonForm(vectors);
-    // if (rref.some((row, i) => approx(row[i], 0))) {
-    //   console.log(rref);
-    //   const result = [] as number[];
-    //   for (let i = 0; i < rref[0].length; i++) {
-    //     result.push(rref.every((row) => approx(row[i], 0)) ? 1 : 0);
-    //   }
-    //   console.log(result);
-    //   return VMath.normalize(result);
-    // }
-    console.log('rref', rref);
-    const result = rref.map((row) => -row[row.length - 1]);
-    return VMath.normalize([...result, 1]);
-  },
-
   /** Returns the angle between two vectors */
   angle(a: number[], b: number[]): number {
     const dot = VMath.dot(a, b);
@@ -203,19 +140,9 @@ const VMath = {
   },
 
   /** Returns true if two vectors are equal */
-  equal(a: number[], b: number[]): boolean {
+  equal(a: number[], b: number[], epsilon = 1e-15): boolean {
     for (let i = 0; i < a.length; i++) {
-      if (!approx(a[i], b[i])) {
-        return false;
-      }
-    }
-    return true;
-  },
-
-  /** Returns true if two vectors are approximately equal */
-  approx(a: number[], b: number[], epsilon = 1e-10): boolean {
-    for (let i = 0; i < a.length; i++) {
-      if (Math.abs(a[i] - b[i]) > epsilon) {
+      if (!approx(a[i], b[i], epsilon)) {
         return false;
       }
     }
