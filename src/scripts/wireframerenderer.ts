@@ -14,15 +14,20 @@ function splitFaceIntoTriangles(face: number[]) {
 class WireframeRenderer {
   visble = true;
   facesVisible = true;
+  dummyObject = new THREE.Object3D(); // Used for calculations
+  dummyColor = new THREE.Color(); // Used for calculations
   vertex:
     | {
-        meshes: THREE.Mesh[];
+        mesh: THREE.InstancedMesh;
+        colorAttribute: THREE.InstancedBufferAttribute;
       }
     | undefined;
   edge:
     | {
         data: number[][];
-        meshes: THREE.Mesh[];
+        mesh: THREE.InstancedMesh;
+        color1Attribute: THREE.InstancedBufferAttribute;
+        color2Attribute: THREE.InstancedBufferAttribute;
       }
     | undefined;
   face:
@@ -52,8 +57,8 @@ class WireframeRenderer {
   /** Toggles visibility of all meshes but only toggles face meshes if facesVisible is true */
   setVisible(visible: boolean): void {
     if (!this.vertex || !this.edge || !this.face) throw new Error('Object not initialized');
-    this.vertex.meshes.forEach((m) => (m.visible = visible));
-    this.edge.meshes.forEach((m) => (m.visible = visible));
+    this.vertex.mesh.visible = visible;
+    this.edge.mesh.visible = visible;
     if (this.facesVisible) {
       this.face.mesh.visible = visible;
     }
@@ -66,78 +71,103 @@ class WireframeRenderer {
     this.dispose();
 
     /// Create edges
-    this.edge = { data: getEdgesFromFaces(faces), meshes: [] };
-
+    const edgeData = getEdgesFromFaces(faces);
     const edgeGeometry = new THREE.CylinderBufferGeometry(thickness, thickness, 1, 20);
     edgeGeometry.rotateX(-Math.PI / 2);
+    const edgeMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2194ce,
+      shininess: 100,
+    });
+    edgeMaterial.defines = { USE_UV: '' };
+    edgeMaterial.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          '#define PHONG',
+          `#define PHONG
+          varying vec3 vColor1;
+          varying vec3 vColor2;`
+        )
+        .replace(
+          '#include <common>',
+          `#include <common>
+          attribute vec3 color1;
+          attribute vec3 color2;`
+        )
+        .replace(
+          '#include <project_vertex>',
+          `#include <project_vertex>
+          vColor1 = color1;
+          vColor2 = color2;`
+        );
 
-    // Create a mesh for each edge
-    for (let i = 0; i < this.edge.data.length; i++) {
-      const mat = new THREE.MeshPhongMaterial({
-        color: 0x2194ce,
-        shininess: 100,
-      });
-
-      const color1 = { value: new THREE.Color(1, 0.5, 0) };
-      const color2 = { value: new THREE.Color(1, 0.5, 0) };
-
-      mat.defines = { USE_UV: '' };
-
-      mat.onBeforeCompile = (shader) => {
-        shader.uniforms.color1 = color1;
-        shader.uniforms.color2 = color2;
-        shader.fragmentShader = `
-        uniform vec3 color1;
-        uniform vec3 color2;
+      shader.fragmentShader = `
+        varying vec3 vColor1;
+        varying vec3 vColor2;
         ${shader.fragmentShader.replace(
           'vec4 diffuseColor = vec4( diffuse, opacity );',
-          'vec4 diffuseColor = vec4( mix( color1, color2, vec3(vUv.y) ), opacity );'
+          'vec4 diffuseColor = vec4( mix( vColor1, vColor2, vec3(vUv.y) ), opacity );'
         )}
         `;
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      mat.userData.color1 = color1;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      mat.userData.color2 = color2;
-
-      const mesh = new THREE.Mesh(edgeGeometry, mat);
-      this.edge.meshes.push(mesh);
-      this.scene.add(mesh);
-    }
+    };
+    const edgeColor1Attribute = new THREE.InstancedBufferAttribute(
+      new Float32Array(VMath.random(edgeData.length * 3, 0, 1)),
+      3
+    );
+    const edgeColor2Attribute = new THREE.InstancedBufferAttribute(
+      new Float32Array(VMath.random(edgeData.length * 3, 0, 1)),
+      3
+    );
+    edgeGeometry.setAttribute('color1', edgeColor1Attribute);
+    edgeGeometry.setAttribute('color2', edgeColor2Attribute);
+    const edgeMesh = new THREE.InstancedMesh(edgeGeometry, edgeMaterial, edgeData.length);
+    this.scene.add(edgeMesh);
+    this.edge = {
+      data: edgeData,
+      mesh: edgeMesh,
+      color1Attribute: edgeColor1Attribute,
+      color2Attribute: edgeColor2Attribute,
+    };
 
     /// Create vertices
-    this.vertex = { meshes: [] };
-
     const vertexGeometry = new THREE.SphereBufferGeometry(thickness, 20, 20);
+    const vertexMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2194ce,
+      shininess: 100,
+    });
+    vertexMaterial.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          '#define PHONG',
+          `#define PHONG
+          varying vec3 vColor;`
+        )
+        .replace(
+          '#include <common>',
+          `#include <common>
+          attribute vec3 color;`
+        )
+        .replace(
+          '#include <project_vertex>',
+          `#include <project_vertex>
+          vColor = color;`
+        );
 
-    // Create a mesh for each vertex
-    for (let i = 0; i < vertexCount; i++) {
-      const mat = new THREE.MeshPhongMaterial({
-        color: 0x2194ce,
-        shininess: 100,
-      });
-
-      const color = { value: new THREE.Color(1, 0.5, 0) };
-
-      mat.onBeforeCompile = (shader) => {
-        shader.uniforms.color = color;
-        shader.fragmentShader = `
-        uniform vec3 color;
+      shader.fragmentShader = `
+        varying vec3 vColor;
         ${shader.fragmentShader.replace(
           'vec4 diffuseColor = vec4( diffuse, opacity );',
-          'vec4 diffuseColor = vec4( color, opacity );'
+          'vec4 diffuseColor = vec4( vColor, opacity );'
         )}
         `;
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      mat.userData.color = color;
-
-      const mesh = new THREE.Mesh(vertexGeometry, mat);
-      this.vertex.meshes.push(mesh);
-      this.scene.add(mesh);
-    }
+    };
+    const vertexColorAttribute = new THREE.InstancedBufferAttribute(
+      new Float32Array(VMath.random(vertexCount * 3, 0, 1)),
+      3
+    );
+    vertexGeometry.setAttribute('color', vertexColorAttribute);
+    const vertexMesh = new THREE.InstancedMesh(vertexGeometry, vertexMaterial, vertexCount);
+    this.scene.add(vertexMesh);
+    this.vertex = { mesh: vertexMesh, colorAttribute: vertexColorAttribute };
 
     /// Create faces
     const triangles = faces.map(splitFaceIntoTriangles).flat();
@@ -160,6 +190,8 @@ class WireframeRenderer {
       color: 0xffffff,
       side: THREE.DoubleSide,
       opacity: 0.15,
+      // transmission: 0.5,
+      // specularIntensity: 1,
       transparent: true,
       clearcoat: 1.0,
       reflectivity: 1.0,
@@ -194,44 +226,40 @@ class WireframeRenderer {
     for (let i = 0; i < this.edge.data.length; i++) {
       const edge = this.edge.data[i];
 
-      const vertex1 = points[edge[0]];
-      const vertex2 = points[edge[1]];
+      const vec = VMath.sub(points[edge[1]], points[edge[0]]);
+      const mean = VMath.mean(points[edge[1]], points[edge[0]]);
 
-      // Update position
-      this.edge.meshes[i].scale.z = VMath.distance(vertex1, vertex2);
+      this.dummyObject.scale.z = VMath.norm(vec);
+      this.dummyObject.position.set(mean[0], mean[1], mean[2]);
+      this.dummyObject.lookAt(vec[0] + mean[0], vec[1] + mean[1], vec[2] + mean[2]);
+      this.dummyObject.updateMatrix();
+      this.edge.mesh.setMatrixAt(i, this.dummyObject.matrix);
 
-      const newPosx = (vertex1[0] + vertex2[0]) / 2;
-      const newPosy = (vertex1[1] + vertex2[1]) / 2;
-      const newPosz = (vertex1[2] + vertex2[2]) / 2;
-
-      this.edge.meshes[i].position.set(newPosx, newPosy, newPosz);
-
-      this.edge.meshes[i].lookAt(
-        vertex1[0] - vertex2[0] + newPosx,
-        vertex1[1] - vertex2[1] + newPosy,
-        vertex1[2] - vertex2[2] + newPosz
-      );
-
-      // Update colors
       if (color) {
-        // @ts-expect-error: Typescript doesn't know about the custom shader
-        this.edge.meshes[i].material.userData.color1.value.setHSL(color[edge[0]] % 1, 1, 0.5);
-        // @ts-expect-error: Typescript doesn't know about the custom shader
-        this.edge.meshes[i].material.userData.color2.value.setHSL(color[edge[1]] % 1, 1, 0.5);
+        const c1 = this.dummyColor.setHSL(color[edge[0]] % 1, 1, 0.5).toArray();
+        const c2 = this.dummyColor.setHSL(color[edge[1]] % 1, 1, 0.5).toArray();
+        this.edge.color1Attribute.set(c1, i * 3);
+        this.edge.color2Attribute.set(c2, i * 3);
       }
     }
+    this.edge.mesh.instanceMatrix.needsUpdate = true;
+    this.edge.color1Attribute.needsUpdate = true;
+    this.edge.color2Attribute.needsUpdate = true;
 
     // Update vertices
+    this.dummyObject.scale.z = 1;
     for (let i = 0; i < points.length; i++) {
-      // Update position
-      this.vertex.meshes[i].position.set(...(points[i] as [number, number, number]));
+      this.dummyObject.position.set(points[i][0], points[i][1], points[i][2]);
+      this.dummyObject.updateMatrix();
+      this.vertex.mesh.setMatrixAt(i, this.dummyObject.matrix);
 
-      // Update colors
       if (color) {
-        // @ts-expect-error: Typescript doesn't know about our custom shader
-        this.vertex.meshes[i].material.userData.color.value.setHSL(color[i] % 1, 1, 0.5);
+        const c = this.dummyColor.setHSL(color[i] % 1, 1, 0.5).toArray();
+        this.vertex.colorAttribute.set(c, i * 3);
       }
     }
+    this.vertex.colorAttribute.needsUpdate = true;
+    this.vertex.mesh.instanceMatrix.needsUpdate = true;
 
     // Update faces
     for (let i = 0; i < this.face.triangles.length; i++) {
@@ -262,12 +290,12 @@ class WireframeRenderer {
   /** Deletes all meshes, use to dispose of object */
   dispose(): void {
     if (!this.vertex || !this.edge || !this.face) return;
-    this.vertex.meshes.forEach((m) => this.scene.remove(m));
-    this.edge.meshes.forEach((m) => this.scene.remove(m));
+    this.scene.remove(this.vertex.mesh);
+    this.scene.remove(this.edge.mesh);
     this.scene.remove(this.face.mesh);
 
-    this.vertex.meshes.forEach((m) => m.geometry.dispose());
-    this.edge.meshes.forEach((m) => m.geometry.dispose());
+    this.vertex.mesh.geometry.dispose();
+    this.edge.mesh.dispose();
     this.face.mesh.geometry.dispose();
 
     this.vertex = undefined;
