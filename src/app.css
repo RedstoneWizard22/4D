@@ -4,9 +4,25 @@
 @tailwind utilities;
 
 @layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  body > div:first-child {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    @apply font-sans;
+  }
+
   a {
     @apply text-blue-500 underline;
   }
+
   a:visited {
     @apply text-purple-600;
   }
