@@ -3,7 +3,6 @@
   // WARNING: .js file extension is necessary here for ssr to work
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   import FoldingObject3D from '../../scripts/foldingobject3d';
-  import LoadingOverlay from '../../ui/components/LoadingOverlay.svelte';
   import AnimatedScene from '../../ui/components/AnimatedScene.svelte';
   import { useAnimationDebugger } from '../../ui/utilities/use-animation-debugger';
   import * as wireframes from '../../data/wireframe3d';
@@ -95,9 +94,8 @@
 </script>
 
 <div class="flex h-full w-full bg-gray-50 p-4 md:space-x-5 md:p-5">
-  <div class="relative h-full w-[70%] overflow-clip rounded-xl bg-white">
-    <LoadingOverlay visible={loading} />
-    <AnimatedScene callbacks={{ init, frame, resize, destroy }} />
+  <div class="h-full w-[70%] overflow-clip rounded-xl bg-white">
+    <AnimatedScene callbacks={{ init, frame, resize, destroy }} {loading} />
   </div>
   <div class="h-full w-[30%]">
     <a href="/">Home</a>

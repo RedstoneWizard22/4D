@@ -7,7 +7,6 @@
   import AnimatedScene from '../../ui/components/AnimatedScene.svelte';
   import { useAnimationDebugger } from '../../ui/utilities/use-animation-debugger';
   import * as wireframes from '../../data/wireframe';
-  import LoadingOverlay from '../../ui/components/LoadingOverlay.svelte';
 
   type Wireframes = keyof typeof wireframes;
   let selected: Wireframes = 'cell8';
@@ -95,9 +94,8 @@
 </script>
 
 <div class="flex h-full w-full bg-gray-50 p-4 md:space-x-5 md:p-5">
-  <div class="relative h-full w-[70%] overflow-clip rounded-xl bg-white">
-    <LoadingOverlay visible={loading} />
-    <AnimatedScene callbacks={{ init, frame, resize, destroy }} />
+  <div class="h-full w-[70%] overflow-clip rounded-xl bg-white">
+    <AnimatedScene callbacks={{ init, frame, resize, destroy }} {loading} />
   </div>
   <div class="h-full w-[30%]">
     <a href="/">Home</a>
