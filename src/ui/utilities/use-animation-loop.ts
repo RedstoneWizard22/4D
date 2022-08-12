@@ -19,8 +19,8 @@ export function useAnimationLoop({
   maxFps,
   autoStart,
 }: UseAnimationLoopOptions = {}): AnimationLoop {
-  maxFps = maxFps || Infinity;
-  autoStart = autoStart || true;
+  maxFps = maxFps ?? Infinity;
+  autoStart = autoStart ?? true;
 
   let animationFrame = 0,
     frameInterval = 1000 / maxFps,
@@ -81,9 +81,9 @@ export function useAnimationLoop({
   }
 
   function setOptions(opts: UseAnimationLoopOptions) {
-    maxFps = opts.maxFps || maxFps;
-    autoStart = opts.autoStart || autoStart;
-    frameInterval = 1000 / (maxFps || Infinity);
+    maxFps = opts.maxFps ?? maxFps;
+    autoStart = opts.autoStart ?? autoStart;
+    frameInterval = 1000 / (maxFps ?? Infinity);
   }
 
   return { add, remove, start, stop, setOptions };

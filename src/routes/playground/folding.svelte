@@ -52,16 +52,14 @@
 
   const debug = useAnimationDebugger();
   function frame() {
-    if (!loading) {
-      debug.begin();
-      if (currentFrame != prevFrame) {
-        cube.update(currentFrame);
-        prevFrame = currentFrame;
-      }
-      debug.endSection('update');
-      renderer.render(scene, camera);
-      debug.endSection('render');
+    debug.begin();
+    if (currentFrame != prevFrame) {
+      cube.update(currentFrame);
+      prevFrame = currentFrame;
     }
+    debug.endSection('update');
+    renderer.render(scene, camera);
+    debug.endSection('render');
   }
 
   function resize(_: unknown, width: number, height: number) {

@@ -55,16 +55,14 @@
 
   const debug = useAnimationDebugger();
   function frame() {
-    if (!loading) {
-      debug.begin();
-      cube.reset();
-      cube.rotate(rotation);
-      debug.endSection('rotate');
-      cube.update();
-      debug.endSection('update');
-      renderer.render(scene, camera);
-      debug.endSection('render');
-    }
+    debug.begin();
+    cube.reset();
+    cube.rotate(rotation);
+    debug.endSection('rotate');
+    cube.update();
+    debug.endSection('update');
+    renderer.render(scene, camera);
+    debug.endSection('render');
   }
 
   function resize(_: unknown, width: number, height: number) {
