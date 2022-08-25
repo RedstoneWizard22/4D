@@ -12,4 +12,9 @@ type Rotation4D = {
   zw: number;
 };
 
-export type { Rotation3D, Rotation4D };
+interface HyperObjectData3D {
+  vertices: number[][];
+  faces: number[][];
+}
+
+export type { Rotation3D, Rotation4D, HyperObjectData3D };
