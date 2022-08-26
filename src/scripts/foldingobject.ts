@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import { orientedArea, orientedVolume, perspectiveProject, Rotor4D } from './4dtools';
 import type { HyperObjectData } from './hyperobject';
 import VMath from './tools';
@@ -277,11 +277,17 @@ class FoldingObject {
     const points4D = this.frames[frame];
     // const points3D = perspectiveProject(points4D, -3).map((p) => VMath.mult(p, 1.5));
     const points3D = perspectiveProject(points4D, -1.5).map((p) => VMath.mult(p, 0.75));
-    const MAX_W = 1;
-    // const color = points4D.map((p) => (((p[3] + MAX_W) / MAX_W) * 30 + 25) / 360);
-    const color = points4D.map((p) => (((p[3] + MAX_W) / MAX_W) * -30 + 90) / 360);
 
-    this.renderer.update(points3D, color);
+    const dummyColor = new THREE.Color(0xffffff);
+    const MAX_W = 1;
+    const color = points4D.map((p) => {
+      const h = (((p[3] + MAX_W) / MAX_W) * -30 + 90) / 360;
+      dummyColor.setHSL(h % 1, 1, 0.5);
+      return dummyColor.toArray();
+    });
+
+    this.renderer.setVertexPositions(points3D);
+    this.renderer.setVertexColors(color);
   }
 
   /** Toggles visibility of all face meshes */

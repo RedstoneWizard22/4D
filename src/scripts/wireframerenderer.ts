@@ -15,7 +15,6 @@ class WireframeRenderer {
   visble = true;
   facesVisible = true;
   dummyObject = new THREE.Object3D(); // Used for calculations
-  dummyColor = new THREE.Color(); // Used for calculations
   vertex:
     | {
         mesh: THREE.InstancedMesh;
@@ -190,7 +189,7 @@ class WireframeRenderer {
       color: 0xffffff,
       side: THREE.DoubleSide,
       opacity: 0.15,
-      // transmission: 0.5,
+      transmission: 0.4,
       // specularIntensity: 1,
       transparent: true,
       clearcoat: 1.0,
@@ -218,8 +217,8 @@ class WireframeRenderer {
     this.setFacesVisible(this.facesVisible);
   }
 
-  /** Updates position and rotation of all meshes to the correct values */
-  update(points: number[][], color?: number[]): void {
+  /** Sets the positions of the vertices */
+  setVertexPositions(points: number[][]): void {
     if (!this.vertex || !this.edge || !this.face) throw new Error('Object not initialized');
 
     // Update edges
@@ -234,17 +233,8 @@ class WireframeRenderer {
       this.dummyObject.lookAt(vec[0] + mean[0], vec[1] + mean[1], vec[2] + mean[2]);
       this.dummyObject.updateMatrix();
       this.edge.mesh.setMatrixAt(i, this.dummyObject.matrix);
-
-      if (color) {
-        const c1 = this.dummyColor.setHSL(color[edge[0]] % 1, 1, 0.5).toArray();
-        const c2 = this.dummyColor.setHSL(color[edge[1]] % 1, 1, 0.5).toArray();
-        this.edge.color1Attribute.set(c1, i * 3);
-        this.edge.color2Attribute.set(c2, i * 3);
-      }
     }
     this.edge.mesh.instanceMatrix.needsUpdate = true;
-    this.edge.color1Attribute.needsUpdate = true;
-    this.edge.color2Attribute.needsUpdate = true;
 
     // Update vertices
     this.dummyObject.scale.z = 1;
@@ -252,13 +242,7 @@ class WireframeRenderer {
       this.dummyObject.position.set(points[i][0], points[i][1], points[i][2]);
       this.dummyObject.updateMatrix();
       this.vertex.mesh.setMatrixAt(i, this.dummyObject.matrix);
-
-      if (color) {
-        const c = this.dummyColor.setHSL(color[i] % 1, 1, 0.5).toArray();
-        this.vertex.colorAttribute.set(c, i * 3);
-      }
     }
-    this.vertex.colorAttribute.needsUpdate = true;
     this.vertex.mesh.instanceMatrix.needsUpdate = true;
 
     // Update faces
@@ -269,7 +253,7 @@ class WireframeRenderer {
 
       const normal = VMath.cross(VMath.sub(v2, v1), VMath.sub(v3, v1));
 
-      // This is the fastest way to update the elements
+      // Manually accessing the array is way faster than using .set()
       for (let j = 0; j < 3; j++) {
         //@ts-expect-error: Probably fine
         this.face.positionAttribute.array[i * 9 + j] = v1[j];
@@ -285,6 +269,28 @@ class WireframeRenderer {
     }
     this.face.positionAttribute.needsUpdate = true;
     this.face.normalAttribute.needsUpdate = true;
+  }
+
+  /** Update the colors of the vertices (edge colors are interpolated from these)
+   *  @param {number[][]} color - Array of rgb color values, one for each vertex
+   */
+  setVertexColors(color: number[][]): void {
+    if (!this.vertex || !this.edge) throw new Error('Object not initialized');
+
+    // Update edges
+    for (let i = 0; i < this.edge.data.length; i++) {
+      const edge = this.edge.data[i];
+      this.edge.color1Attribute.set(color[edge[0]], i * 3);
+      this.edge.color2Attribute.set(color[edge[1]], i * 3);
+    }
+    this.edge.color1Attribute.needsUpdate = true;
+    this.edge.color2Attribute.needsUpdate = true;
+
+    // Update vertices
+    for (let i = 0; i < color.length; i++) {
+      this.vertex.colorAttribute.set(color[i], i * 3);
+    }
+    this.vertex.colorAttribute.needsUpdate = true;
   }
 
   /** Deletes all meshes, use to dispose of object */

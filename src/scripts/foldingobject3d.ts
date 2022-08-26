@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import { Rotor3D } from './4dtools';
 import VMath from './tools';
 import { WireframeRenderer } from './wireframerenderer';
@@ -236,10 +236,13 @@ class FoldingObject3D {
     }
 
     const points3D = this.frames[frame];
-    // const MAX_W = 1;
-    // const color = points3D.map((p) => ((p[2] + MAX_W) / MAX_W) * 0.5);
 
-    this.renderer.update(points3D);
+    const dummyColor = new THREE.Color(0xffffff);
+    dummyColor.setHSL(30 / 360, 1, 0.5);
+    const color = points3D.map(() => dummyColor.toArray());
+
+    this.renderer.setVertexPositions(points3D);
+    this.renderer.setVertexColors(color);
   }
 
   /** Toggles visibility of all face meshes */

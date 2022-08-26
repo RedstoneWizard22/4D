@@ -37,7 +37,7 @@
 
     ////////// Scene Setup //////////
     // Camera
-    camera.position.set(0, 2, -5);
+    camera.position.set(0, 1.3, -3.25);
     camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     // Lighting

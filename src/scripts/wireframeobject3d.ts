@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type { HyperObjectData3D, Rotation3D } from 'src/types/common';
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import { Rotor3D } from './4dtools';
 import VMath from './tools';
 import WireframeRenderer from './wireframerenderer';
@@ -68,8 +68,14 @@ export default class WireframeObject3D {
       throw new Error('No data loaded');
     }
 
+    const dummyColor = new THREE.Color(0xffffff);
     const MAX_W = 1;
-    const color = this.vertices.map((p) => (((p[1] + MAX_W) / MAX_W) * 30) / 360);
+    const color = this.vertices.map((p) => {
+      const h = (((p[1] + MAX_W) / MAX_W) * 30) / 360;
+      dummyColor.setHSL(h % 1, 1, 0.5);
+      return dummyColor.toArray();
+    });
+    this.renderer.setVertexColors(color);
 
     if (ppFactor) {
       const interpPoints = [];
@@ -80,9 +86,9 @@ export default class WireframeObject3D {
       for (let i = 0; i < this.vertices.length; i++) {
         interpPoints.push(VMath.lerp(this.vertices[i], perspPoints[i], ppFactor));
       }
-      this.renderer.update(interpPoints, color);
+      this.renderer.setVertexPositions(interpPoints);
     } else {
-      this.renderer.update(this.vertices, color);
+      this.renderer.setVertexPositions(this.vertices);
     }
   }
 
