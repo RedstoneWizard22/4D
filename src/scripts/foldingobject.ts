@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as THREE from 'three';
-import { orientedArea, orientedVolume, perspectiveProject, Rotor4D } from './4dtools';
+import { hyperPlane, orientedArea, perspectiveProject, Rotor4D } from './4dtools';
 import type { HyperObjectData } from './hyperobject';
 import VMath from './tools';
 import { WireframeRenderer } from './wireframerenderer';
@@ -187,8 +187,7 @@ class FoldingObject {
     };
     const v3 = pick();
 
-    const ov = orientedVolume(v1, v2, v3);
-    const normal = [-ov[3], ov[2], -ov[1], ov[0]];
+    const normal = hyperPlane(v1, v2, v3, [0, 0, 0, 0]).normal;
     const target = [0, 0, 0, 1];
 
     if (!VMath.parallel(normal, target)) {

@@ -1,4 +1,5 @@
 import VMath from './tools';
+import MMath from './mmath';
 
 /** Perspective project a set of ND vectors to (N-1)D */
 function perspectiveProject(points: number[][], camDist: number, planeOffset = 2): number[][] {
@@ -53,6 +54,24 @@ function orientedVolume(u: number[], v: number[], w: number[]): number[] {
   return ov;
 }
 
+/** Returns the unit normal of the hyperplane spanned by points, and distance of the plane along it */
+function hyperPlane(...points: number[][]): { normal: number[]; dist: number } {
+  const p0 = points[0];
+  const vecs = points.slice(1, points.length).map((point) => VMath.sub(p0, point));
+
+  let normal = [];
+  const mat = MMath.vstack(p0, ...vecs);
+  for (let d = 0; d < p0.length; d++) {
+    const minor = MMath.minor(mat, 0, d);
+    normal.push(MMath.det(minor));
+  }
+  normal = VMath.normalize(normal).map((n, i) => (i % 2 === 0 ? n : -n));
+
+  const dist = VMath.dot(p0, normal);
+
+  return { normal, dist };
+}
+
 function isProbablySingleVector(test: number[][] | number[]): test is number[] {
   return typeof test[0] === 'number';
 }
@@ -63,12 +82,7 @@ class Rotor4D {
   // The unit oriented area lying in the plane of rotation
   _plane = [0, 0, 0, 0, 0, 0];
   // The rotation matrix
-  _rotationMatrix = [
-    [1, 0, 0, 0],
-    [0, 1, 0, 0],
-    [0, 0, 1, 0],
-    [0, 0, 0, 1],
-  ];
+  _rotationMatrix = MMath.identity(4);
   // Signals that the rotation matrix needs to be recalculated
   _rotationMatrixDirty = false;
 
@@ -173,7 +187,7 @@ class Rotor4D {
       }
       return rotated;
     } else {
-      return points.map((x) => this.rotate(x as number[]));
+      return points.map((x) => this.rotate(x));
     }
   }
 }
@@ -184,11 +198,7 @@ class Rotor3D {
   // The unit oriented area lying in the plane of rotation
   _plane = [0, 0, 0];
   // The rotation matrix
-  _rotationMatrix = [
-    [1, 0, 0],
-    [0, 1, 0],
-    [0, 0, 1],
-  ];
+  _rotationMatrix = MMath.identity(3);
   // Signals that the rotation matrix needs to be recalculated
   _rotationMatrixDirty = false;
 
@@ -251,9 +261,9 @@ class Rotor3D {
       }
       return rotated;
     } else {
-      return points.map((x) => this.rotate(x as number[]));
+      return points.map((x) => this.rotate(x));
     }
   }
 }
 
-export { perspectiveProject, orientedArea, orientedVolume, Rotor4D, Rotor3D };
+export { perspectiveProject, orientedArea, orientedVolume, hyperPlane, Rotor4D, Rotor3D };

@@ -1,5 +1,6 @@
 import type { Rotation4D } from 'src/types/common';
 import { Rotor4D } from './4dtools';
+import MMath from './mmath';
 
 interface HyperObjectData {
   vertices: number[][];
@@ -10,12 +11,7 @@ interface HyperObjectData {
 
 class HyperObject {
   data!: HyperObjectData;
-  axes!: {
-    x: number[];
-    y: number[];
-    z: number[];
-    w: number[];
-  };
+  axes = MMath.identity(4);
   points4D!: number[][];
   rotor: Rotor4D;
 
@@ -36,25 +32,13 @@ class HyperObject {
   /** Loades err... Data */
   loadData(data: HyperObjectData): void {
     this.data = data;
-    this.axes = {
-      x: [1, 0, 0, 0],
-      y: [0, 1, 0, 0],
-      z: [0, 0, 1, 0],
-      w: [0, 0, 0, 1],
-    };
-    // Deep copy vertices to points4D
-    this.points4D = data.vertices.map((v) => v.slice());
+    this.reset();
   }
 
   /** Resets the hyperobject to it's original state */
   reset(): void {
     this.points4D = this.data.vertices.map((v) => v.slice());
-    this.axes = {
-      x: [1, 0, 0, 0],
-      y: [0, 1, 0, 0],
-      z: [0, 0, 1, 0],
-      w: [0, 0, 0, 1],
-    };
+    this.axes = MMath.identity(4);
   }
 
   /** Rotates points4D by a certain ammount */
@@ -62,56 +46,37 @@ class HyperObject {
     const axes = this.axes;
     const rotor = this.rotor;
 
-    // Rotation array
-    const rot = [
-      rotation.xy ?? 0,
-      rotation.xz ?? 0,
-      rotation.yz ?? 0,
-      rotation.xw ?? 0,
-      rotation.yw ?? 0,
-      rotation.zw ?? 0,
-    ];
+    for (const [key, value] of Object.entries(rotation)) {
+      if (Math.abs(value) > 0.00001) {
+        // Set the plane of rotation
+        switch (key) {
+          case 'xy':
+            rotor.setPlane(axes[0], axes[1]);
+            break;
+          case 'xz':
+            rotor.setPlane(axes[0], axes[2]);
+            break;
+          case 'yz':
+            rotor.setPlane(axes[1], axes[2]);
+            break;
+          case 'xw':
+            rotor.setPlane(axes[0], axes[3]);
+            break;
+          case 'yw':
+            rotor.setPlane(axes[1], axes[3]);
+            break;
+          case 'zw':
+            rotor.setPlane(axes[2], axes[3]);
+            break;
+        }
 
-    // For each rotation in order apply the rotation around the corresponding plane
-    for (let i = 0; i < rot.length; i++) {
-      // Continue if angle is undefined
-      if (Math.abs(rot[i]) < 0.00001) {
-        continue;
+        // Set the angle of rotation
+        rotor.setAngle(value);
+
+        // Rotate the points and axes
+        this.points4D = this.rotor.rotate(this.points4D);
+        this.axes = this.rotor.rotate(this.axes);
       }
-
-      // Set the plane of rotation
-      switch (i) {
-        case 0:
-          rotor.setPlane(axes.x, axes.y);
-          break;
-        case 1:
-          rotor.setPlane(axes.x, axes.z);
-          break;
-        case 2:
-          rotor.setPlane(axes.y, axes.z);
-          break;
-        case 3:
-          rotor.setPlane(axes.x, axes.w);
-          break;
-        case 4:
-          rotor.setPlane(axes.y, axes.w);
-          break;
-        case 5:
-          rotor.setPlane(axes.z, axes.w);
-          break;
-      }
-
-      // Set the angle of rotation
-      rotor.setAngle(rot[i]);
-
-      // Rotate the points
-      this.points4D = this.rotor.rotate(this.points4D);
-
-      // Rotate every axis by the same amount
-      this.axes.x = this.rotor.rotate(this.axes.x);
-      this.axes.y = this.rotor.rotate(this.axes.y);
-      this.axes.z = this.rotor.rotate(this.axes.z);
-      this.axes.w = this.rotor.rotate(this.axes.w);
     }
   }
 }
