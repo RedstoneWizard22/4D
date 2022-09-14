@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import FastToddCoxeter from '../scripts/fast-todd-coxeter';
+  import FastToddCoxeter from '../../scripts/fast-todd-coxeter';
 
   onMount(() => {
     const start = performance.now();

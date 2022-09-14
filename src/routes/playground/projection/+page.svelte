@@ -2,11 +2,11 @@
   import * as THREE from 'three';
   // WARNING: .js file extension is necessary here for ssr to work
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-  import WireframeObject from '../../scripts/wireframeobject';
+  import WireframeObject from '../../../scripts/wireframeobject';
   import type { Rotation4D } from 'src/types/common';
-  import AnimatedScene from '../../ui/components/AnimatedScene.svelte';
-  import { useAnimationDebugger } from '../../ui/utilities/use-animation-debugger';
-  import * as wireframes from '../../data/wireframe';
+  import AnimatedScene from '../../../ui/components/AnimatedScene.svelte';
+  import { useAnimationDebugger } from '../../../ui/utilities/use-animation-debugger';
+  import * as wireframes from '../../../data/wireframe';
 
   type Wireframes = keyof typeof wireframes;
   let selected: Wireframes = 'cell8';

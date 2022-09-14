@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { browser } from '$app/env';
+  import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import { useAnimationLoop } from '../utilities/use-animation-loop';

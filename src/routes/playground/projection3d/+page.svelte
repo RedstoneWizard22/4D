@@ -2,10 +2,10 @@
   import * as THREE from 'three';
   // WARNING: .js file extension is necessary here for ssr to work
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-  import WireframeObject3D from '../../scripts/wireframeobject3d';
+  import WireframeObject3D from '../../../scripts/wireframeobject3d';
   import type { Rotation3D } from 'src/types/common';
-  import AnimatedScene from '../../ui/components/AnimatedScene.svelte';
-  import * as wireframes from '../../data/wireframe3d';
+  import AnimatedScene from '../../../ui/components/AnimatedScene.svelte';
+  import * as wireframes from '../../../data/wireframe3d';
   import { tweened } from 'svelte/motion';
   import { quadInOut } from 'svelte/easing';
 
