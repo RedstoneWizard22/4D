@@ -91,7 +91,7 @@
   }
 </script>
 
-<div class="flex h-full w-full bg-gray-50 p-4 md:space-x-5 md:p-5">
+<div class="flex h-full w-full p-4 md:space-x-5 md:p-5">
   <div class="h-full w-[70%] overflow-clip rounded-xl bg-white">
     <AnimatedScene callbacks={{ init, frame, resize, destroy }} {loading} />
   </div>
@@ -110,3 +110,7 @@
     </select>
   </div>
 </div>
+
+<svelte:head>
+  <title>4D Playground · Folding3D</title>
+</svelte:head>

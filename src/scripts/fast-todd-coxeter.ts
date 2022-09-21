@@ -61,7 +61,7 @@ class FastToddCoxeter {
     }
 
     if (i == MAX_ITER) {
-      console.error('Max iterations reached');
+      throw new Error('Max iterations reached');
     }
   }
 
