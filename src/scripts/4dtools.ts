@@ -3,9 +3,17 @@ import MMath from './mmath';
 
 /** Perspective project a set of ND vectors to (N-1)D */
 function perspectiveProject(points: number[][], camDist: number, planeOffset = 2): number[][] {
-  return points.map((point) =>
-    vm.smult(point.slice(0, point.length - 1), planeOffset / (point[point.length - 1] - camDist))
-  );
+  const result = [];
+  for (let i = 0; i < points.length; i++) {
+    const point = points[i];
+    const d = planeOffset / (point[point.length - 1] - camDist);
+    const projected = [];
+    for (let j = 0; j < point.length - 1; j++) {
+      projected.push(point[j] * d);
+    }
+    result.push(projected);
+  }
+  return result;
 }
 
 /** Returns the oriented area formed by the outer product of 2 vectors

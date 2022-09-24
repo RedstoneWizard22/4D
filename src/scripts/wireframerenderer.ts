@@ -2,19 +2,11 @@
 import * as THREE from 'three';
 import { getEdgesFromFaces } from './etc';
 import * as vm from '$utils/vmath';
-
-function splitFaceIntoTriangles(face: number[]) {
-  const triangles = [];
-  for (let i = 0; i < face.length - 2; i++) {
-    triangles.push([face[0], face[i + 1], face[i + 2]]);
-  }
-  return triangles;
-}
+import { approx } from '$utils/number';
 
 class WireframeRenderer {
   visble = true;
   facesVisible = true;
-  dummyObject = new THREE.Object3D(); // Used for calculations
   vertex:
     | {
         mesh: THREE.InstancedMesh;
@@ -32,7 +24,6 @@ class WireframeRenderer {
   face:
     | {
         data: number[][];
-        triangles: number[][];
         mesh: THREE.Mesh;
         positionAttribute: THREE.Float32BufferAttribute;
         normalAttribute: THREE.Float32BufferAttribute;
@@ -69,14 +60,13 @@ class WireframeRenderer {
     // Dispose of all old meshes and remove them from the scene
     this.dispose();
 
+    const defaultMatrix = new THREE.Matrix4();
+
     /// Create edges
     const edgeData = getEdgesFromFaces(faces);
     const edgeGeometry = new THREE.CylinderBufferGeometry(thickness, thickness, 1, 20);
     edgeGeometry.rotateX(-Math.PI / 2);
-    const edgeMaterial = new THREE.MeshPhongMaterial({
-      color: 0x2194ce,
-      shininess: 100,
-    });
+    const edgeMaterial = new THREE.MeshPhongMaterial({ shininess: 100 });
     edgeMaterial.defines = { USE_UV: '' };
     edgeMaterial.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader
@@ -109,11 +99,11 @@ class WireframeRenderer {
         `;
     };
     const edgeColor1Attribute = new THREE.InstancedBufferAttribute(
-      new Float32Array(vm.random(edgeData.length * 3, 0, 1)),
+      new Float32Array(edgeData.length * 3),
       3
     );
     const edgeColor2Attribute = new THREE.InstancedBufferAttribute(
-      new Float32Array(vm.random(edgeData.length * 3, 0, 1)),
+      new Float32Array(edgeData.length * 3),
       3
     );
     edgeGeometry.setAttribute('color1', edgeColor1Attribute);
@@ -126,13 +116,13 @@ class WireframeRenderer {
       color1Attribute: edgeColor1Attribute,
       color2Attribute: edgeColor2Attribute,
     };
+    for (let i = 0; i < edgeData.length; i++) {
+      edgeMesh.setMatrixAt(i, defaultMatrix);
+    }
 
     /// Create vertices
     const vertexGeometry = new THREE.SphereBufferGeometry(thickness, 20, 20);
-    const vertexMaterial = new THREE.MeshPhongMaterial({
-      color: 0x2194ce,
-      shininess: 100,
-    });
+    const vertexMaterial = new THREE.MeshPhongMaterial({ shininess: 100 });
     vertexMaterial.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader
         .replace(
@@ -160,28 +150,30 @@ class WireframeRenderer {
         `;
     };
     const vertexColorAttribute = new THREE.InstancedBufferAttribute(
-      new Float32Array(vm.random(vertexCount * 3, 0, 1)),
+      new Float32Array(vertexCount * 3),
       3
     );
     vertexGeometry.setAttribute('color', vertexColorAttribute);
     const vertexMesh = new THREE.InstancedMesh(vertexGeometry, vertexMaterial, vertexCount);
     this.scene.add(vertexMesh);
     this.vertex = { mesh: vertexMesh, colorAttribute: vertexColorAttribute };
-
-    /// Create faces
-    const triangles = faces.map(splitFaceIntoTriangles).flat();
-
-    const geometry = new THREE.BufferGeometry();
-    const positions: number[] = [];
-    const normals: number[] = [];
-
-    for (let i = 0; i < triangles.length; i++) {
-      positions.push(...vm.random(9, 0, 1));
-      normals.push(...vm.random(9, 0, 1));
+    for (let i = 0; i < vertexCount; i++) {
+      vertexMesh.setMatrixAt(i, defaultMatrix);
     }
 
-    const positionAttribute = new THREE.Float32BufferAttribute(positions, 3);
-    const normalAttribute = new THREE.Float32BufferAttribute(normals, 3);
+    /// Create faces
+    const triangleCount = faces.reduce((acc, face) => acc + face.length - 2, 0);
+
+    const geometry = new THREE.BufferGeometry();
+
+    const positionAttribute = new THREE.Float32BufferAttribute(
+      new Float32Array(triangleCount * 9),
+      3
+    );
+    const normalAttribute = new THREE.Float32BufferAttribute(
+      new Float32Array(triangleCount * 9),
+      3
+    );
     geometry.setAttribute('position', positionAttribute);
     geometry.setAttribute('normal', normalAttribute);
 
@@ -190,14 +182,12 @@ class WireframeRenderer {
       side: THREE.DoubleSide,
       opacity: 0.15,
       transmission: 0.4,
-      // specularIntensity: 1,
       transparent: true,
       clearcoat: 1.0,
       reflectivity: 1.0,
       roughness: 0.0,
       flatShading: true,
       premultipliedAlpha: true,
-      precision: 'highp',
       depthWrite: false,
     });
 
@@ -206,7 +196,6 @@ class WireframeRenderer {
 
     this.face = {
       data: faces,
-      triangles,
       mesh,
       positionAttribute,
       normalAttribute,
@@ -222,49 +211,84 @@ class WireframeRenderer {
     if (!this.vertex || !this.edge || !this.face) throw new Error('Object not initialized');
 
     // Update edges
+    const earr = this.edge.mesh.instanceMatrix.array as Float32Array;
     for (let i = 0; i < this.edge.data.length; i++) {
       const edge = this.edge.data[i];
+      const v0 = points[edge[0]];
+      const v1 = points[edge[1]];
 
-      const vec = vm.sub(points[edge[0]], points[edge[1]]);
-      const mid = vm.avg(points[edge[1]], points[edge[0]]);
+      const f = vm.sub(v0, v1);
+      const mag = vm.mag(f);
+      vm.smulti(f, 1 / mag);
 
-      this.dummyObject.scale.z = vm.mag(vec);
-      this.dummyObject.position.set(mid[0], mid[1], mid[2]);
-      this.dummyObject.lookAt(vec[0] + mid[0], vec[1] + mid[1], vec[2] + mid[2]);
-      this.dummyObject.updateMatrix();
-      this.edge.mesh.setMatrixAt(i, this.dummyObject.matrix);
+      let u: number[], r: number[];
+      if (approx(f[2], 1)) {
+        u = [1, 0, 0];
+        r = [0, -1, 0];
+      } else if (approx(f[2], -1)) {
+        u = [1, 0, 0];
+        r = [0, 1, 0];
+      } else {
+        const d = Math.sqrt(1 - f[2] * f[2]);
+        u = [-f[1] / d, f[0] / d, 0]; // Precomputation of normalize(cross(f, [0, 0, 1]))
+        r = vm.cross(u, f);
+      }
+
+      const i16 = i * 16;
+      earr[i16] = r[0];
+      earr[i16 + 1] = r[1];
+      earr[i16 + 2] = r[2];
+      // earr[i16 + 3] = 0;
+      earr[i16 + 4] = u[0];
+      earr[i16 + 5] = u[1];
+      earr[i16 + 6] = u[2];
+      // earr[i16 + 7] = 0;
+      earr[i16 + 8] = f[0] * mag;
+      earr[i16 + 9] = f[1] * mag;
+      earr[i16 + 10] = f[2] * mag;
+      // earr[i16 + 11] = 0;
+      earr[i16 + 12] = (v1[0] + v0[0]) / 2;
+      earr[i16 + 13] = (v1[1] + v0[1]) / 2;
+      earr[i16 + 14] = (v1[2] + v0[2]) / 2;
+      // earr[i16 + 15] = 1;
     }
     this.edge.mesh.instanceMatrix.needsUpdate = true;
 
     // Update vertices
-    this.dummyObject.scale.z = 1;
+    const varr = this.vertex.mesh.instanceMatrix.array as Float32Array;
     for (let i = 0; i < points.length; i++) {
-      this.dummyObject.position.set(points[i][0], points[i][1], points[i][2]);
-      this.dummyObject.updateMatrix();
-      this.vertex.mesh.setMatrixAt(i, this.dummyObject.matrix);
+      const s = i * 16 + 12;
+      varr[s] = points[i][0];
+      varr[s + 1] = points[i][1];
+      varr[s + 2] = points[i][2];
     }
     this.vertex.mesh.instanceMatrix.needsUpdate = true;
 
     // Update faces
-    for (let i = 0; i < this.face.triangles.length; i++) {
-      const v1 = points[this.face.triangles[i][0]];
-      const v2 = points[this.face.triangles[i][1]];
-      const v3 = points[this.face.triangles[i][2]];
+    let t = 0;
+    const posarr = this.face.positionAttribute.array as Float32Array;
+    const normarr = this.face.normalAttribute.array as Float32Array;
+    for (let i = 0; i < this.face.data.length; i++) {
+      const face = this.face.data[i];
+      const v1 = points[face[0]];
 
-      const normal = vm.cross(vm.sub(v1, v2), vm.sub(v1, v3));
+      for (let f = 1; f < face.length - 1; f++) {
+        const v2 = points[face[f]];
+        const v3 = points[face[f + 1]];
 
-      // Manually accessing the array is way faster than using .set()
-      for (let j = 0; j < 3; j++) {
-        //@ts-expect-error: Probably fine
-        this.face.positionAttribute.array[i * 9 + j] = v1[j];
-        //@ts-expect-error: Probably fine
-        this.face.positionAttribute.array[i * 9 + j + 3] = v2[j];
-        //@ts-expect-error: Probably fine
-        this.face.positionAttribute.array[i * 9 + j + 6] = v3[j];
-        for (let k = 0; k < 3; k++) {
-          //@ts-expect-error: Probably fine
-          this.face.normalAttribute.array[i * 9 + j * 3 + k] = normal[k];
+        const normal = vm.cross(vm.sub(v1, v2), vm.sub(v1, v3));
+
+        // Manually accessing the array is way faster than using .set()
+        for (let j = 0; j < 3; j++) {
+          posarr[t + j] = v1[j];
+          posarr[t + j + 3] = v2[j];
+          posarr[t + j + 6] = v3[j];
+          for (let k = 0; k < 3; k++) {
+            normarr[t + j * 3 + k] = normal[k];
+          }
         }
+
+        t += 9;
       }
     }
     this.face.positionAttribute.needsUpdate = true;
@@ -278,17 +302,28 @@ class WireframeRenderer {
     if (!this.vertex || !this.edge) throw new Error('Object not initialized');
 
     // Update edges
+    const color1arr = this.edge.color1Attribute.array as Float32Array;
+    const color2arr = this.edge.color2Attribute.array as Float32Array;
     for (let i = 0; i < this.edge.data.length; i++) {
       const edge = this.edge.data[i];
-      this.edge.color1Attribute.set(color[edge[0]], i * 3);
-      this.edge.color2Attribute.set(color[edge[1]], i * 3);
+      const c1 = color[edge[0]];
+      const c2 = color[edge[1]];
+      color1arr[i * 3] = c1[0];
+      color1arr[i * 3 + 1] = c1[1];
+      color1arr[i * 3 + 2] = c1[2];
+      color2arr[i * 3] = c2[0];
+      color2arr[i * 3 + 1] = c2[1];
+      color2arr[i * 3 + 2] = c2[2];
     }
     this.edge.color1Attribute.needsUpdate = true;
     this.edge.color2Attribute.needsUpdate = true;
 
     // Update vertices
+    const colorarr = this.vertex.colorAttribute.array as Float32Array;
     for (let i = 0; i < color.length; i++) {
-      this.vertex.colorAttribute.set(color[i], i * 3);
+      colorarr[i * 3] = color[i][0];
+      colorarr[i * 3 + 1] = color[i][1];
+      colorarr[i * 3 + 2] = color[i][2];
     }
     this.vertex.colorAttribute.needsUpdate = true;
   }
