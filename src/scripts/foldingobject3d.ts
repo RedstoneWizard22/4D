@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as THREE from 'three';
 import { Rotor3D } from './4dtools';
-import VMath from './tools';
+import * as vm from '$utils/vmath';
 import { WireframeRenderer } from './wireframerenderer';
 
 interface HyperObjectData3D {
@@ -94,14 +94,14 @@ class FoldingObject3D {
         }
 
         // Calculate center
-        tree.center = VMath.mean(...data.faces[index].map((i) => data.vertices[i]));
+        tree.center = vm.avg(...data.faces[index].map((i) => data.vertices[i]));
 
         // Calculate anchor
         if (toSum.length != 0) {
-          const v1 = VMath.sub(toSum[0], tree.center);
-          const v2 = VMath.sub(toSum[0], toSum[1]);
-          const v3 = VMath.project(v1, v2);
-          tree.anchor = VMath.sum(toSum[0], v3);
+          const v1 = vm.sub(tree.center, toSum[0]);
+          const v2 = vm.sub(toSum[1], toSum[0]);
+          const v3 = vm.project(v1, v2);
+          tree.anchor = vm.add(toSum[0], v3);
         } else {
           tree.anchor = [0, 0, 0];
         }
@@ -144,10 +144,10 @@ class FoldingObject3D {
 
     const translateAllInTree = (tree: Tree, translation: number[]): void => {
       for (const vertex of tree.myVertices) {
-        VMath.translate(vertices[vertex], translation);
+        vm.addi(vertices[vertex], translation);
       }
-      VMath.translate(tree.center, translation);
-      VMath.translate(tree.anchor, translation);
+      vm.addi(tree.center, translation);
+      vm.addi(tree.anchor, translation);
       for (const child of tree.children) {
         translateAllInTree(child, translation);
       }
@@ -155,16 +155,16 @@ class FoldingObject3D {
 
     // Rotate tree so that the root node lies in the xy plane
     const root = tree;
-    translateAllInTree(tree, VMath.mult(vertices[root.myVertices[0]], -1));
+    translateAllInTree(tree, vm.smult(vertices[root.myVertices[0]], -1));
 
     const v1 = vertices[root.myVertices[1]].slice();
     const v2 = vertices[root.myVertices[2]].slice();
 
-    const normal = VMath.cross(v1, v2);
+    const normal = vm.cross(v1, v2);
     const target = [0, 1, 0];
 
-    if (!VMath.parallel(normal, target)) {
-      const angle = VMath.angle(normal, target);
+    if (!vm.parallel(normal, target)) {
+      const angle = vm.angle(normal, target);
       this.rotor.setAngle(-angle);
       this.rotor.setPlane(normal, target);
       rotateAllInTree(tree);
@@ -182,15 +182,15 @@ class FoldingObject3D {
     };
 
     forceAllInTreeToBePositiveY(tree); // So that shape expands/unfolds upwards
-    translateAllInTree(tree, VMath.mult(root.center, -1));
+    translateAllInTree(tree, vm.smult(root.center, -1));
 
     // DONE!
 
     const unfold = (tree: Tree, percentage: number): void => {
       for (const child of tree.children) {
-        const a = VMath.sub(child.center, child.anchor);
-        const b = VMath.sub(tree.center, child.anchor);
-        const angle = VMath.angle(a, b);
+        const a = vm.sub(child.anchor, child.center);
+        const b = vm.sub(child.anchor, tree.center);
+        const angle = vm.angle(a, b);
 
         // Rotate
         this.rotor.setAngle((Math.PI - angle) * percentage);

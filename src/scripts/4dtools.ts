@@ -1,10 +1,10 @@
-import VMath from './tools';
+import * as vm from '$utils/vmath';
 import MMath from './mmath';
 
 /** Perspective project a set of ND vectors to (N-1)D */
 function perspectiveProject(points: number[][], camDist: number, planeOffset = 2): number[][] {
   return points.map((point) =>
-    VMath.mult(point.slice(0, point.length - 1), planeOffset / (point[point.length - 1] - camDist))
+    vm.smult(point.slice(0, point.length - 1), planeOffset / (point[point.length - 1] - camDist))
   );
 }
 
@@ -57,7 +57,7 @@ function orientedVolume(u: number[], v: number[], w: number[]): number[] {
 /** Returns the unit normal of the hyperplane spanned by points, and distance of the plane along it */
 function hyperPlane(...points: number[][]): { normal: number[]; dist: number } {
   const p0 = points[0];
-  const vecs = points.slice(1, points.length).map((point) => VMath.sub(p0, point));
+  const vecs = points.slice(1, points.length).map((point) => vm.sub(point, p0));
 
   let normal = [];
   const mat = MMath.vstack(p0, ...vecs);
@@ -65,9 +65,9 @@ function hyperPlane(...points: number[][]): { normal: number[]; dist: number } {
     const minor = MMath.minor(mat, 0, d);
     normal.push(MMath.det(minor));
   }
-  normal = VMath.normalize(normal).map((n, i) => (i % 2 === 0 ? n : -n));
+  normal = vm.normi(normal).map((n, i) => (i % 2 === 0 ? n : -n));
 
-  const dist = VMath.dot(p0, normal);
+  const dist = vm.dot(p0, normal);
 
   return { normal, dist };
 }
@@ -88,7 +88,7 @@ class Rotor4D {
 
   /** Sets the plane of rotation, given two vectors spanning it */
   setPlane(v1: number[], v2: number[]): void {
-    this._plane = VMath.normalize(orientedArea(v1, v2));
+    this._plane = vm.normi(orientedArea(v1, v2));
     this._rotationMatrixDirty = true;
   }
 
@@ -178,12 +178,12 @@ class Rotor4D {
     }
 
     if (isProbablySingleVector(points)) {
-      const rotated = VMath.transform(
-        center ? VMath.sub(center, points) : points,
+      const rotated = vm.applyMatrix(
+        center ? vm.sub(points, center) : points,
         this._rotationMatrix
       );
       if (center) {
-        VMath.translate(rotated, center);
+        vm.addi(rotated, center);
       }
       return rotated;
     } else {
@@ -204,7 +204,7 @@ class Rotor3D {
 
   /** Sets the plane of rotation, given two vectors spanning it */
   setPlane(v1: number[], v2: number[]): void {
-    this._plane = VMath.normalize(orientedArea(v1, v2));
+    this._plane = vm.normi(orientedArea(v1, v2));
     this._rotationMatrixDirty = true;
   }
 
@@ -252,12 +252,12 @@ class Rotor3D {
     }
 
     if (isProbablySingleVector(points)) {
-      const rotated = VMath.transform(
-        center ? VMath.sub(center, points) : points,
+      const rotated = vm.applyMatrix(
+        center ? vm.sub(points, center) : points,
         this._rotationMatrix
       );
       if (center) {
-        VMath.translate(rotated, center);
+        vm.addi(rotated, center);
       }
       return rotated;
     } else {

@@ -2,7 +2,7 @@
 import type { HyperObjectData3D, Rotation3D } from 'src/types/common';
 import * as THREE from 'three';
 import { Rotor3D } from './4dtools';
-import VMath from './tools';
+import * as vm from '$utils/vmath';
 import WireframeRenderer from './wireframerenderer';
 
 export default class WireframeObject3D {
@@ -81,10 +81,10 @@ export default class WireframeObject3D {
       const interpPoints = [];
       const CAM_DIST = 2;
       const perspPoints = this.vertices.map((point) =>
-        VMath.mult([point[0], 0, point[2]], 1.5 / (CAM_DIST - point[1]))
+        vm.smult([point[0], 0, point[2]], 1.5 / (CAM_DIST - point[1]))
       );
       for (let i = 0; i < this.vertices.length; i++) {
-        interpPoints.push(VMath.lerp(this.vertices[i], perspPoints[i], ppFactor));
+        interpPoints.push(vm.lerp(this.vertices[i], perspPoints[i], ppFactor));
       }
       this.renderer.setVertexPositions(interpPoints);
     } else {

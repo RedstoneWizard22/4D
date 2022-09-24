@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as THREE from 'three';
 import { getEdgesFromFaces } from './etc';
-import VMath from './tools';
+import * as vm from '$utils/vmath';
 
 function splitFaceIntoTriangles(face: number[]) {
   const triangles = [];
@@ -109,11 +109,11 @@ class WireframeRenderer {
         `;
     };
     const edgeColor1Attribute = new THREE.InstancedBufferAttribute(
-      new Float32Array(VMath.random(edgeData.length * 3, 0, 1)),
+      new Float32Array(vm.random(edgeData.length * 3, 0, 1)),
       3
     );
     const edgeColor2Attribute = new THREE.InstancedBufferAttribute(
-      new Float32Array(VMath.random(edgeData.length * 3, 0, 1)),
+      new Float32Array(vm.random(edgeData.length * 3, 0, 1)),
       3
     );
     edgeGeometry.setAttribute('color1', edgeColor1Attribute);
@@ -160,7 +160,7 @@ class WireframeRenderer {
         `;
     };
     const vertexColorAttribute = new THREE.InstancedBufferAttribute(
-      new Float32Array(VMath.random(vertexCount * 3, 0, 1)),
+      new Float32Array(vm.random(vertexCount * 3, 0, 1)),
       3
     );
     vertexGeometry.setAttribute('color', vertexColorAttribute);
@@ -176,8 +176,8 @@ class WireframeRenderer {
     const normals: number[] = [];
 
     for (let i = 0; i < triangles.length; i++) {
-      positions.push(...VMath.random(9, 0, 1));
-      normals.push(...VMath.random(9, 0, 1));
+      positions.push(...vm.random(9, 0, 1));
+      normals.push(...vm.random(9, 0, 1));
     }
 
     const positionAttribute = new THREE.Float32BufferAttribute(positions, 3);
@@ -225,12 +225,12 @@ class WireframeRenderer {
     for (let i = 0; i < this.edge.data.length; i++) {
       const edge = this.edge.data[i];
 
-      const vec = VMath.sub(points[edge[1]], points[edge[0]]);
-      const mean = VMath.mean(points[edge[1]], points[edge[0]]);
+      const vec = vm.sub(points[edge[0]], points[edge[1]]);
+      const mid = vm.avg(points[edge[1]], points[edge[0]]);
 
-      this.dummyObject.scale.z = VMath.norm(vec);
-      this.dummyObject.position.set(mean[0], mean[1], mean[2]);
-      this.dummyObject.lookAt(vec[0] + mean[0], vec[1] + mean[1], vec[2] + mean[2]);
+      this.dummyObject.scale.z = vm.mag(vec);
+      this.dummyObject.position.set(mid[0], mid[1], mid[2]);
+      this.dummyObject.lookAt(vec[0] + mid[0], vec[1] + mid[1], vec[2] + mid[2]);
       this.dummyObject.updateMatrix();
       this.edge.mesh.setMatrixAt(i, this.dummyObject.matrix);
     }
@@ -251,7 +251,7 @@ class WireframeRenderer {
       const v2 = points[this.face.triangles[i][1]];
       const v3 = points[this.face.triangles[i][2]];
 
-      const normal = VMath.cross(VMath.sub(v2, v1), VMath.sub(v3, v1));
+      const normal = vm.cross(vm.sub(v1, v2), vm.sub(v1, v3));
 
       // Manually accessing the array is way faster than using .set()
       for (let j = 0; j < 3; j++) {

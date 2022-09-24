@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { hyperPlane, orientedArea, perspectiveProject, Rotor4D } from './4dtools';
 import type { HyperObjectData } from './hyperobject';
-import VMath from './tools';
+import * as vm from '$utils/vmath';
 import { WireframeRenderer } from './wireframerenderer';
 
 class FoldingObject {
@@ -94,7 +94,7 @@ class FoldingObject {
         }
 
         // Calculate center
-        tree.center = VMath.mean(...volumeVerts.map((i) => data.vertices[i]));
+        tree.center = vm.avg(...volumeVerts.map((i) => data.vertices[i]));
 
         // Calculate anchor
         // This method is likely to only work for regular 4D shapes
@@ -102,7 +102,7 @@ class FoldingObject {
         tree.anchor =
           joiningFace === undefined
             ? [0, 0, 0, 0]
-            : VMath.mean(...data.faces[joiningFace].map((i) => data.vertices[i]));
+            : vm.avg(...data.faces[joiningFace].map((i) => data.vertices[i]));
 
         // Fill in children
         volumeNeighbours[index].forEach((n) => {
@@ -142,10 +142,10 @@ class FoldingObject {
 
     const translateAllInTree = (tree: Tree, translation: number[]): void => {
       for (const vertex of tree.myVertices) {
-        VMath.translate(vertices[vertex], translation);
+        vm.addi(vertices[vertex], translation);
       }
-      VMath.translate(tree.center, translation);
-      VMath.translate(tree.anchor, translation);
+      vm.addi(tree.center, translation);
+      vm.addi(tree.anchor, translation);
       for (const child of tree.children) {
         translateAllInTree(child, translation);
       }
@@ -158,7 +158,7 @@ class FoldingObject {
     const root = tree;
 
     // First make vertex 0 lie at the origin, to make the math easier.
-    translateAllInTree(tree, VMath.mult(vertices[root.myVertices[0]], -1));
+    translateAllInTree(tree, vm.smult(vertices[root.myVertices[0]], -1));
 
     // v1 will be vertex 1
     const v1 = vertices[root.myVertices[1]].slice();
@@ -166,7 +166,7 @@ class FoldingObject {
     let pick = (): number[] => {
       for (let i = 2; i < root.myVertices.length; i++) {
         const potential = vertices[root.myVertices[i]].slice();
-        if (!VMath.parallel(v1, potential)) {
+        if (!vm.parallel(v1, potential)) {
           return potential;
         }
       }
@@ -179,7 +179,7 @@ class FoldingObject {
       for (let i = 2; i < root.myVertices.length; i++) {
         const potential = vertices[root.myVertices[i]].slice();
         const v13plane = orientedArea(v1, potential);
-        if (!VMath.parallel(v12plane, v13plane)) {
+        if (!vm.parallel(v12plane, v13plane)) {
           return potential;
         }
       }
@@ -190,8 +190,8 @@ class FoldingObject {
     const normal = hyperPlane(v1, v2, v3, [0, 0, 0, 0]).normal;
     const target = [0, 0, 0, 1];
 
-    if (!VMath.parallel(normal, target)) {
-      const angle = VMath.angle(normal, target);
+    if (!vm.parallel(normal, target)) {
+      const angle = vm.angle(normal, target);
       this.rotor.setAngle(angle);
       this.rotor.setPlane(normal, target);
       rotateAllInTree(tree);
@@ -221,13 +221,13 @@ class FoldingObject {
     forceAllInTreeToBePositiveW(tree);
     // forceAllInTreeToBeNegativeW(tree);
     // Finally translate so that the root node is centered at the origin.
-    translateAllInTree(tree, VMath.mult(root.center, -1));
+    translateAllInTree(tree, vm.smult(root.center, -1));
 
     const unfold = (tree: Tree, percentage: number): void => {
       for (const child of tree.children) {
-        const a = VMath.sub(child.center, child.anchor);
-        const b = VMath.sub(tree.center, child.anchor);
-        const angle = VMath.angle(a, b);
+        const a = vm.sub(child.anchor, child.center);
+        const b = vm.sub(child.anchor, tree.center);
+        const angle = vm.angle(a, b);
 
         // Rotate
         this.rotor.setAngle(-(Math.PI - angle) * percentage);
@@ -274,8 +274,8 @@ class FoldingObject {
     }
 
     const points4D = this.frames[frame];
-    // const points3D = perspectiveProject(points4D, -3).map((p) => VMath.mult(p, 1.5));
-    const points3D = perspectiveProject(points4D, -1.5).map((p) => VMath.mult(p, 0.75));
+    // const points3D = perspectiveProject(points4D, -3).map((p) => vm.smult(p, 1.5));
+    const points3D = perspectiveProject(points4D, -1.5).map((p) => vm.smult(p, 0.75));
 
     const dummyColor = new THREE.Color(0xffffff);
     const MAX_W = 1;
