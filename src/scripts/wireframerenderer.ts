@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as THREE from 'three';
 import { getEdgesFromFaces } from './etc';
-import * as vm from '$utils/vmath';
 import { approx } from '$utils/number';
 
 class WireframeRenderer {
@@ -23,7 +22,6 @@ class WireframeRenderer {
     | undefined;
   face:
     | {
-        data: number[][];
         mesh: THREE.Mesh;
         positionAttribute: THREE.Float32BufferAttribute;
       }
@@ -63,8 +61,9 @@ class WireframeRenderer {
 
     /// Create edges
     const edgeData = getEdgesFromFaces(faces);
-    const edgeGeometry = new THREE.CylinderBufferGeometry(thickness, thickness, 1, 20);
+    const edgeGeometry = new THREE.CylinderBufferGeometry(thickness, thickness, 1, 16);
     edgeGeometry.rotateX(-Math.PI / 2);
+    edgeGeometry.translate(0, 0, -0.5);
     const edgeMaterial = new THREE.MeshPhongMaterial({ shininess: 100 });
     edgeMaterial.defines = { USE_UV: '' };
     edgeMaterial.onBeforeCompile = (shader) => {
@@ -120,7 +119,7 @@ class WireframeRenderer {
     }
 
     /// Create vertices
-    const vertexGeometry = new THREE.SphereBufferGeometry(thickness, 20, 20);
+    const vertexGeometry = new THREE.SphereBufferGeometry(thickness, 16, 16);
     const vertexMaterial = new THREE.MeshPhongMaterial({ shininess: 100 });
     vertexMaterial.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader
@@ -196,7 +195,6 @@ class WireframeRenderer {
     this.scene.add(mesh);
 
     this.face = {
-      data: faces,
       mesh,
       positionAttribute,
     };
@@ -217,40 +215,47 @@ class WireframeRenderer {
       const v0 = points[edge[0]];
       const v1 = points[edge[1]];
 
-      const f = vm.sub(v0, v1);
-      const mag = vm.mag(f);
-      vm.smulti(f, 1 / mag);
+      let fx = v0[0] - v1[0];
+      let fy = v0[1] - v1[1];
+      let fz = v0[2] - v1[2];
+      const magf = Math.sqrt(fx * fx + fy * fy + fz * fz);
 
-      let u: number[], r: number[];
-      if (approx(f[2], 1)) {
-        u = [1, 0, 0];
-        r = [0, -1, 0];
-      } else if (approx(f[2], -1)) {
-        u = [1, 0, 0];
-        r = [0, 1, 0];
-      } else {
-        const d = Math.sqrt(1 - f[2] * f[2]);
-        u = [-f[1] / d, f[0] / d, 0]; // Precomputation of normalize(cross(f, [0, 0, 1]))
-        r = vm.cross(u, f);
+      fx /= magf;
+      fy /= magf;
+      fz /= magf;
+
+      let ux = 1,
+        uy = 0; // uz is always 0
+      let rx = 0,
+        ry = 1,
+        rz = 0;
+      if (approx(fz, 1)) {
+        ry = -1;
+      } else if (!approx(fz, -1)) {
+        const d = Math.sqrt(1 - fz * fz);
+        ux = -fy / d;
+        uy = fx / d;
+        rx = uy * fz;
+        ry = -ux * fz;
+        rz = ux * fy - uy * fx;
       }
 
       const i16 = i * 16;
-      earr[i16] = r[0];
-      earr[i16 + 1] = r[1];
-      earr[i16 + 2] = r[2];
-      // earr[i16 + 3] = 0;
-      earr[i16 + 4] = u[0];
-      earr[i16 + 5] = u[1];
-      earr[i16 + 6] = u[2];
-      // earr[i16 + 7] = 0;
-      earr[i16 + 8] = f[0] * mag;
-      earr[i16 + 9] = f[1] * mag;
-      earr[i16 + 10] = f[2] * mag;
-      // earr[i16 + 11] = 0;
-      earr[i16 + 12] = (v1[0] + v0[0]) / 2;
-      earr[i16 + 13] = (v1[1] + v0[1]) / 2;
-      earr[i16 + 14] = (v1[2] + v0[2]) / 2;
-      // earr[i16 + 15] = 1;
+      earr[i16] = rx;
+      earr[i16 + 1] = ry;
+      earr[i16 + 2] = rz;
+
+      earr[i16 + 4] = ux;
+      earr[i16 + 5] = uy;
+      // earr[6] = uz; uz is always 0
+
+      earr[i16 + 8] = fx * magf;
+      earr[i16 + 9] = fy * magf;
+      earr[i16 + 10] = fz * magf;
+
+      earr[i16 + 12] = v0[0];
+      earr[i16 + 13] = v0[1];
+      earr[i16 + 14] = v0[2];
     }
     this.edge.mesh.instanceMatrix.needsUpdate = true;
 
