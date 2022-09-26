@@ -161,15 +161,21 @@ class WireframeRenderer {
     }
 
     /// Create faces
-    const triangleCount = faces.reduce((acc, face) => acc + face.length - 2, 0);
-
     const geometry = new THREE.BufferGeometry();
-
     const positionAttribute = new THREE.Float32BufferAttribute(
-      new Float32Array(triangleCount * 9),
+      new Float32Array(vertexCount * 3),
       3
     );
     geometry.setAttribute('position', positionAttribute);
+
+    const faceIndices = [];
+    for (const face of faces) {
+      for (let i = 0; i < face.length - 2; i++) {
+        faceIndices.push(face[0], face[i + 1], face[i + 2]);
+      }
+    }
+
+    geometry.setIndex(faceIndices);
     // When using flatShading, we do not need to specify normals
 
     const material = new THREE.MeshPhysicalMaterial({
@@ -248,37 +254,21 @@ class WireframeRenderer {
     }
     this.edge.mesh.instanceMatrix.needsUpdate = true;
 
-    // Update vertices
+    // Update vertices and faces
     const varr = this.vertex.mesh.instanceMatrix.array as Float32Array;
+    const farr = this.face.positionAttribute.array as Float32Array;
     for (let i = 0; i < points.length; i++) {
       const s = i * 16 + 12;
       varr[s] = points[i][0];
       varr[s + 1] = points[i][1];
       varr[s + 2] = points[i][2];
+
+      const i3 = i * 3;
+      farr[i3] = points[i][0];
+      farr[i3 + 1] = points[i][1];
+      farr[i3 + 2] = points[i][2];
     }
     this.vertex.mesh.instanceMatrix.needsUpdate = true;
-
-    // Update faces
-    let t = 0;
-    const posarr = this.face.positionAttribute.array as Float32Array;
-    for (let i = 0; i < this.face.data.length; i++) {
-      const face = this.face.data[i];
-      const v1 = points[face[0]];
-
-      for (let f = 1; f < face.length - 1; f++) {
-        const v2 = points[face[f]];
-        const v3 = points[face[f + 1]];
-
-        // Manually accessing the array is way faster than using .set()
-        for (let j = 0; j < 3; j++) {
-          posarr[t + j] = v1[j];
-          posarr[t + j + 3] = v2[j];
-          posarr[t + j + 6] = v3[j];
-        }
-
-        t += 9;
-      }
-    }
     this.face.positionAttribute.needsUpdate = true;
   }
 
