@@ -26,7 +26,6 @@ class WireframeRenderer {
         data: number[][];
         mesh: THREE.Mesh;
         positionAttribute: THREE.Float32BufferAttribute;
-        normalAttribute: THREE.Float32BufferAttribute;
       }
     | undefined;
   scene: THREE.Scene;
@@ -170,12 +169,8 @@ class WireframeRenderer {
       new Float32Array(triangleCount * 9),
       3
     );
-    const normalAttribute = new THREE.Float32BufferAttribute(
-      new Float32Array(triangleCount * 9),
-      3
-    );
     geometry.setAttribute('position', positionAttribute);
-    geometry.setAttribute('normal', normalAttribute);
+    // When using flatShading, we do not need to specify normals
 
     const material = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
@@ -198,7 +193,6 @@ class WireframeRenderer {
       data: faces,
       mesh,
       positionAttribute,
-      normalAttribute,
     };
 
     // Set visibility of everything
@@ -267,7 +261,6 @@ class WireframeRenderer {
     // Update faces
     let t = 0;
     const posarr = this.face.positionAttribute.array as Float32Array;
-    const normarr = this.face.normalAttribute.array as Float32Array;
     for (let i = 0; i < this.face.data.length; i++) {
       const face = this.face.data[i];
       const v1 = points[face[0]];
@@ -276,23 +269,17 @@ class WireframeRenderer {
         const v2 = points[face[f]];
         const v3 = points[face[f + 1]];
 
-        const normal = vm.cross(vm.sub(v1, v2), vm.sub(v1, v3));
-
         // Manually accessing the array is way faster than using .set()
         for (let j = 0; j < 3; j++) {
           posarr[t + j] = v1[j];
           posarr[t + j + 3] = v2[j];
           posarr[t + j + 6] = v3[j];
-          for (let k = 0; k < 3; k++) {
-            normarr[t + j * 3 + k] = normal[k];
-          }
         }
 
         t += 9;
       }
     }
     this.face.positionAttribute.needsUpdate = true;
-    this.face.normalAttribute.needsUpdate = true;
   }
 
   /** Update the colors of the vertices (edge colors are interpolated from these)
