@@ -1,25 +1,27 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import FastToddCoxeter from '../../scripts/fast-todd-coxeter';
+  import { CosetTable } from '$utils/geometry';
 
-  onMount(() => {
+  function runCosetTable() {
     const start = performance.now();
-    const ftc = new FastToddCoxeter(
-      4,
-      [
-        [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-        [1, 2, 1, 2, 1, 2],
-        [2, 3, 2, 3, 2, 3],
-        [0, 2, 0, 2],
-        [0, 3, 0, 3],
-        [1, 3, 1, 3],
-      ],
-      [0, 2, 3]
+    const ct = new CosetTable(
+      'abcd',
+      ['ababababab', 'bcbcbc', 'cdcdcd', 'acac', 'adad', 'bdbd'],
+      []
     );
-    ftc.solve();
-    console.log(`Ftc took: ${performance.now() - start}ms`);
-    console.log(ftc);
-  });
+    // const ct = new CosetTable('ab', ['aaaaaaaa', 'bbbbbbb', 'abab', 'AbAbAb'], ['aa', 'Ab'], false);
+    try {
+      ct.solve();
+    } catch (e) {
+      console.log(`CosetTable broke after: ${performance.now() - start}ms`);
+      console.log(ct);
+      throw e;
+    }
+
+    console.log(`CosetTable took: ${performance.now() - start}ms`);
+    console.log(ct);
+  }
 </script>
 
-<p>Toddcox</p>
+<button class="rounded-full bg-blue-500 px-6 py-3 text-white" on:click={runCosetTable}>
+  Run coset
+</button>
