@@ -74,7 +74,8 @@ export function parsePlaintextCoxeterDiagram(diagram: string): PolytopeDescripti
   /// Setup
   // prettier-ignore
   const VALID_NODES = ['o', 'v', 'x', 's', 'm', 'p', 'q', 'f', 'h', 'k', 'u', 'w', 'F', 'Q', 'd', 'V', 'U', 'A', 'X', 'B'] as const;
-  const OTHER_CHARS = ['2', '3', '4', '5', '6', '7', '8', '9', ' ', '/', '*'];
+  const INT_CHARS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  const OTHER_CHARS = [' ', '/', '*'];
   type ValidNodes = typeof VALID_NODES[number];
 
   function isValidNode(nodeChar: string): nodeChar is ValidNodes {
@@ -164,11 +165,11 @@ export function parsePlaintextCoxeterDiagram(diagram: string): PolytopeDescripti
         }
         nodeGroupSizes[nodeGroupSizes.length - 1]++;
         nodeCount++;
-      } else if (!OTHER_CHARS.includes(char)) {
+      } else if (!OTHER_CHARS.includes(char) && !INT_CHARS.includes(char)) {
         err(i, i + 1, [
           `Invalid character "${char}"`,
           `Valid node types are ${VALID_NODES.join(', ')}`,
-          `Other valid characters are ${OTHER_CHARS.join(', ')}`,
+          `Other valid characters are ${INT_CHARS.concat(OTHER_CHARS).join(', ')}`,
           "And anything coming straight after a '*' is allowed too",
         ]);
       } else {
@@ -236,50 +237,62 @@ export function parsePlaintextCoxeterDiagram(diagram: string): PolytopeDescripti
   let prevWasEdge = true;
   let from = -1; // Edge goes from this node
   let to = 0; // To this node
-  for (let i = 0; i < diagram.length; i++) {
+  let i = 0;
+  while (i < diagram.length) {
     if (!prevWasEdge) {
-      // We are processing an edge
-      let c = diagram[i];
-
       // If a vnode exists before the edge value, then we need to jump
       // to the vnode's target node
-      if (c == '*') {
+      if (diagram[i] == '*') {
         const target = vnodeTarget(i);
         from = target;
-        c = diagram[i + 2];
         i += 2;
       }
 
-      // Check that n is a valid number
-      const n = c == ' ' ? 2 : parseInt(c);
-      if (isNaN(n)) {
-        err(i, i + 1, 'Expected an edge number');
-      }
+      // Parse the edge value
+      let n = 2; // numerator (as coxeter matrix only uses numerators)
+      let f = 2; // fraction
+      if (diagram[i] != ' ') {
+        const getInt = () => {
+          let str = '';
+          const i0 = i;
+          while (INT_CHARS.includes(diagram[i])) {
+            str += diagram[i++];
+          }
+          const val = parseInt(str);
+          if (str == '') {
+            err(i0, i, 'Expected an integer here');
+          }
+          if (isNaN(val)) {
+            err(i0, i, 'Failed to parse integer');
+          }
+          if (val < 2) {
+            err(i0, i, 'Integer must be at least 2');
+          }
+          return val;
+        };
 
-      // Check if this is a fractional edge.
-      // f will store the fractional value, and n just the numerator
-      // since the coxeter matrix only uses numerators
-      let f = n;
-      if (diagram[i + 1] == '/') {
-        const d = parseInt(diagram[i + 2]);
-        if (isNaN(d)) {
-          err(i + 1, i + 3, 'Expected a number after "/"');
+        n = f = getInt();
+        if (diagram[i] == '/') {
+          // Fractional edge
+          i++;
+          const d = getInt();
+          f /= d;
         }
-        f /= d;
-        i += 2;
+      } else {
+        i++;
       }
 
       // If a vnode exists after the edge value, then the edge
       // points to the vnode's target node
-      if (diagram[i + 1] == '*') {
-        const target = vnodeTarget(i + 1);
+      if (diagram[i] == '*') {
+        const target = vnodeTarget(i);
         to--;
         from = target;
         i += 2;
       }
 
       if (to >= nodeCount) {
-        err(i + 1, i + 2, 'Missing a node here');
+        err(i, i + 1, 'Missing a node here');
       }
 
       S[from][to] = S[to][from] = f;
@@ -299,7 +312,7 @@ export function parsePlaintextCoxeterDiagram(diagram: string): PolytopeDescripti
           err(i + s, i + s + 1, 'Expected a node, is this a valid node type?');
         }
       }
-      i += subpolytopeCount - 1;
+      i += subpolytopeCount;
       from = to++;
       prevWasEdge = false;
     }
