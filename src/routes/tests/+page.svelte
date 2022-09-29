@@ -1,6 +1,7 @@
 <script lang="ts">
   import { CosetTable } from '$utils/geometry/polygen';
   import { parsePlaintextCoxeterDiagram } from '$utils/geometry/polygen';
+  import { polygen } from '$utils/geometry/polygen/polygen';
 
   function runParser() {
     console.log(parsePlaintextCoxeterDiagram('x4o3x'));
@@ -12,6 +13,10 @@
     console.log(parsePlaintextCoxeterDiagram('x3o4o*b5o5/2*c'));
     console.log(parsePlaintextCoxeterDiagram('xxo3oxx&#xt'));
     console.log(parsePlaintextCoxeterDiagram('xo4oo3od'));
+  }
+
+  function runPolygen() {
+    console.log(polygen('x4o3x'));
   }
 
   function runCosetTable() {
@@ -41,4 +46,8 @@
 
 <button class="rounded-full bg-blue-500 px-6 py-3 text-white" on:click={runParser}>
   Run parser
+</button>
+
+<button class="rounded-full bg-blue-500 px-6 py-3 text-white" on:click={runPolygen}>
+  Run polygen
 </button>

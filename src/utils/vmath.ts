@@ -1,7 +1,6 @@
 /* VMath is a high performance arbitrary length vector math module.
- * - Optimized for speed, not size. In order to reduce function call overhead,
- *   most functions are inlined, hence there will be duplicate code.
- * - Number arrays are used to represent vectors.
+ * - Optimized for speed
+ * - Number arrays are used to represent vectors
  * - No safety checks are performed!
  * - Functions ending with i e.g. `subi` are in-place (mutating),
  *   the rest create a new vector
@@ -109,11 +108,7 @@ export function angle(a: number[], b: number[]): number {
 
 /** Linearly interpolates between vectors `a` and `b` by `t`. */
 export function lerp(a: number[], b: number[], t: number): number[] {
-  const result = [];
-  for (let i = 0; i < a.length; i++) {
-    result.push(a[i] * (1 - t) + b[i] * t);
-  }
-  return result;
+  return add(a, smult(sub(b, a), t));
 }
 
 /** Projects vector `a` onto vector `b`. */
@@ -173,8 +168,20 @@ export function random(l: number, min = 0, max = 1): number[] {
 /** Applies a matirx `M` to vector `v`, returning a new vector. */
 export function applyMatrix(v: number[], M: number[][]): number[] {
   const result = [];
-  for (let i = 0; i < M.length; i++) {
+  for (let i = 0; i < v.length; i++) {
     result.push(dot(v, M[i]));
   }
   return result;
 }
+
+/** Reflects vector `v` across plane with normal `n`, returning a new vector. */
+export function reflect(v: number[], n: number[]): number[] {
+  return sub(v, smult(n, 2 * dot(v, n)));
+}
+
+/** Reflects vector `v` across plane with normal `n`, mutating `v`. */
+export function reflecti(v: number[], n: number[]): number[] {
+  return subi(v, smult(n, 2 * dot(v, n)));
+}
+
+export { norm as normalize, normi as normalizei };

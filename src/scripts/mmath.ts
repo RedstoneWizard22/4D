@@ -165,6 +165,10 @@ const MMath = {
     }
     return stack;
   },
+
+  solve(m: number[][], v: number[]): number[] {
+    return MMath.multiplyVector(MMath.inverse(m), v);
+  },
 };
 
 export default MMath;

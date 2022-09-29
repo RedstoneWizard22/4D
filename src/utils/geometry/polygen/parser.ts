@@ -278,6 +278,10 @@ export function parsePlaintextCoxeterDiagram(diagram: string): PolytopeDescripti
         i += 2;
       }
 
+      if (to >= nodeCount) {
+        err(i + 1, i + 2, 'Missing a node here');
+      }
+
       S[from][to] = S[to][from] = f;
       C[from][to] = C[to][from] = n;
       prevWasEdge = true;
