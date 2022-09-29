@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as THREE from 'three';
+import { hsl2rgb } from '$utils/color';
 import { perspectiveProject } from './4dtools';
 import HyperObject, { type HyperObjectData } from './hyperobject';
 import WireframeRenderer from './wireframerenderer';
@@ -37,13 +37,13 @@ class WireframeObject extends HyperObject {
   update(): void {
     const points3D = perspectiveProject(this.points4D, -2);
 
-    const dummyColor = new THREE.Color(0xffffff);
     const MAX_W = 1;
-    const color = this.points4D.map((p) => {
-      const h = (60 - ((p[3] + MAX_W) / MAX_W) * 30) / 360;
-      dummyColor.setHSL(h % 1, 1, 0.5);
-      return dummyColor.toArray();
-    });
+    const color = [];
+    for (let i = 0; i < this.points4D.length; i++) {
+      const w = this.points4D[i][3];
+      const h = 60 - (1 + w / MAX_W) * 30;
+      color.push(hsl2rgb(h % 360, 1, 0.5));
+    }
 
     this.renderer.setVertexPositions(points3D);
     this.renderer.setVertexColors(color);

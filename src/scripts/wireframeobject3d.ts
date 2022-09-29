@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type { HyperObjectData3D, Rotation3D } from 'src/types/common';
-import * as THREE from 'three';
 import { Rotor3D } from './4dtools';
 import * as vm from '$utils/vmath';
 import WireframeRenderer from './wireframerenderer';
+import { hsl2rgb } from '$utils/color';
 
 export default class WireframeObject3D {
   renderer: WireframeRenderer;
@@ -68,13 +68,13 @@ export default class WireframeObject3D {
       throw new Error('No data loaded');
     }
 
-    const dummyColor = new THREE.Color(0xffffff);
-    const MAX_W = 1;
-    const color = this.vertices.map((p) => {
-      const h = (((p[1] + MAX_W) / MAX_W) * 30) / 360;
-      dummyColor.setHSL(h % 1, 1, 0.5);
-      return dummyColor.toArray();
-    });
+    const color = [];
+    const MAX_Y = 1;
+    for (let i = 0; i < this.vertices.length; i++) {
+      const y = this.vertices[i][1];
+      const h = ((y + MAX_Y) / MAX_Y) * 30;
+      color.push(hsl2rgb(h % 360, 1, 0.5));
+    }
     this.renderer.setVertexColors(color);
 
     if (ppFactor) {

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as THREE from 'three';
 import { hyperPlane, orientedArea, perspectiveProject, Rotor4D } from './4dtools';
 import type { HyperObjectData } from './hyperobject';
 import * as vm from '$utils/vmath';
 import { WireframeRenderer } from './wireframerenderer';
+import { hsl2rgb } from '$utils/color';
 
 class FoldingObject {
   rotor: Rotor4D;
@@ -277,13 +277,13 @@ class FoldingObject {
     // const points3D = perspectiveProject(points4D, -3).map((p) => vm.smult(p, 1.5));
     const points3D = perspectiveProject(points4D, -1.5).map((p) => vm.smult(p, 0.75));
 
-    const dummyColor = new THREE.Color(0xffffff);
     const MAX_W = 1;
-    const color = points4D.map((p) => {
-      const h = (((p[3] + MAX_W) / MAX_W) * -30 + 90) / 360;
-      dummyColor.setHSL(h % 1, 1, 0.5);
-      return dummyColor.toArray();
-    });
+    const color = [];
+    for (let i = 0; i < points4D.length; i++) {
+      const w = points4D[i][3];
+      const h = ((w + MAX_W) / MAX_W) * -30 + 90;
+      color.push(hsl2rgb(h % 360, 1, 0.5));
+    }
 
     this.renderer.setVertexPositions(points3D);
     this.renderer.setVertexColors(color);

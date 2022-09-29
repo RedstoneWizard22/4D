@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as THREE from 'three';
 import { Rotor3D } from './4dtools';
 import * as vm from '$utils/vmath';
 import { WireframeRenderer } from './wireframerenderer';
+import { hsl2rgb } from '$utils/color';
 
 interface HyperObjectData3D {
   vertices: number[][];
@@ -237,9 +237,8 @@ class FoldingObject3D {
 
     const points3D = this.frames[frame];
 
-    const dummyColor = new THREE.Color(0xffffff);
-    dummyColor.setHSL(30 / 360, 1, 0.5);
-    const color = points3D.map(() => dummyColor.toArray());
+    const col = hsl2rgb(30, 1, 0.5);
+    const color = points3D.map(() => col);
 
     this.renderer.setVertexPositions(points3D);
     this.renderer.setVertexColors(color);
