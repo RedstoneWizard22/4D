@@ -20,11 +20,11 @@ class FoldingObject {
 
   /** Loades err... Data */
   loadData(data: HyperObjectData): void {
-    const volumeNeighbours = data.volumes.map((volume, i) => {
+    const volumeNeighbours = data.cells.map((volume, i) => {
       const neighbours = [];
-      for (let j = 0; j < data.volumes.length; j++) {
+      for (let j = 0; j < data.cells.length; j++) {
         if (i != j) {
-          const otherVolume = data.volumes[j];
+          const otherVolume = data.cells[j];
           for (const face of otherVolume) {
             if (volume.includes(face)) {
               neighbours.push({
@@ -74,7 +74,7 @@ class FoldingObject {
 
         const vertexMap = new Map<number, number>();
 
-        const validFaces = data.volumes[index].filter((f) => f !== joiningFace);
+        const validFaces = data.cells[index].filter((f) => f !== joiningFace);
         const volumeVerts = Array.from(new Set<number>(validFaces.flatMap((f) => data.faces[f])));
 
         for (const vIdx of volumeVerts) {
@@ -263,8 +263,7 @@ class FoldingObject {
       tree = treeCopy;
     }
 
-    // this.renderer.init(vertices.length, faces, data.optimalThickness * 0.8);
-    this.renderer.init(vertices.length, faces, data.optimalThickness * 0.6);
+    this.renderer.init(vertices.length, faces, (data.optimalThickness || 0.03) * 0.6);
   }
 
   update(frame: number) {

@@ -5,8 +5,8 @@ import MMath from './mmath';
 interface HyperObjectData {
   vertices: number[][];
   faces: number[][];
-  volumes: number[][];
-  optimalThickness: number;
+  cells: number[][];
+  optimalThickness?: number;
 }
 
 class HyperObject {
@@ -22,7 +22,7 @@ class HyperObject {
       this.data = {
         vertices: [],
         faces: [],
-        volumes: [],
+        cells: [],
         optimalThickness: 0,
       };
     }

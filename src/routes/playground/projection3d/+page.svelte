@@ -5,12 +5,13 @@
   import WireframeObject3D from '../../../scripts/wireframeobject3d';
   import type { Rotation3D } from 'src/types/common';
   import AnimatedScene from '../../../ui/components/AnimatedScene.svelte';
-  import * as wireframes from '../../../data/wireframe3d';
+  import { d3 } from '../../../data';
   import { tweened } from 'svelte/motion';
   import { quadInOut } from 'svelte/easing';
+  import polygen from '$utils/geometry/polygen';
 
-  type Wireframes = keyof typeof wireframes;
-  let selected: Wireframes = 'cube';
+  type Names = keyof typeof d3;
+  let selected: Names = 'cube';
 
   let planes = ['xy', 'xz', 'yz'] as const;
   let rotation: Rotation3D = { xz: 0, xy: 0, yz: 0 };
@@ -81,8 +82,8 @@
 
   async function switchShape(shape: string) {
     loading = true;
-    selected = shape as Wireframes;
-    const data = await wireframes[selected].load();
+    selected = shape as Names;
+    const data = polygen(d3[selected], true);
     cube.loadData(data);
     loading = false;
   }
@@ -121,8 +122,8 @@
       <div class="mt-4">
         <p class="mb-0.5">Select solid</p>
         <select bind:value={selected} on:change={(e) => switchShape(e.currentTarget.value)}>
-          {#each Object.keys(wireframes) as wireframe}
-            <option value={wireframe}>{wireframe}</option>
+          {#each Object.keys(d3) as name}
+            <option value={name}>{name}</option>
           {/each}
         </select>
       </div>

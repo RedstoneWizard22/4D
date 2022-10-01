@@ -6,10 +6,11 @@
   import type { Rotation4D } from 'src/types/common';
   import AnimatedScene from '../../../ui/components/AnimatedScene.svelte';
   import { useAnimationDebugger } from '../../../ui/utilities/use-animation-debugger';
-  import * as wireframes from '../../../data/wireframe';
+  import { d4 } from '../../../data';
+  import polygen from '$utils/geometry/polygen';
 
-  type Wireframes = keyof typeof wireframes;
-  let selected: Wireframes = 'cell8';
+  type Names = keyof typeof d4;
+  let selected: Names = 'cell8';
 
   let planes = ['xy', 'xz', 'yz', 'xw', 'yw', 'zw'] as const;
   let rotation: Rotation4D = { xz: 0, xy: 0, yz: 0, xw: 0, yw: 0, zw: 0 };
@@ -84,8 +85,8 @@
 
   async function switchShape(shape: string) {
     loading = true;
-    selected = shape as Wireframes;
-    const data = await wireframes[selected].load();
+    selected = shape as Names;
+    const data = polygen(d4[selected], true);
     cube.loadData(data);
     loading = false;
   }
@@ -115,8 +116,8 @@
       <button on:click={toggleFaces}>Toggle faces</button>
     </div>
     <select bind:value={selected} on:change={(e) => switchShape(e.currentTarget.value)}>
-      {#each Object.keys(wireframes) as wireframe}
-        <option value={wireframe}>{wireframe}</option>
+      {#each Object.keys(d4) as name}
+        <option value={name}>{name}</option>
       {/each}
     </select>
   </div>
