@@ -16,7 +16,10 @@
   }
 
   function runPolygen() {
-    console.log(polygen('x4o3x'));
+    const start = performance.now();
+    const poly = polygen('x5o3o3o');
+    console.log(`Polygen took: ${performance.now() - start}ms`);
+    console.log(poly);
   }
 
   function runCosetTable() {

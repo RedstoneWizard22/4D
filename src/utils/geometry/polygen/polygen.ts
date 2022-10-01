@@ -4,9 +4,19 @@ import CosetTable from './coset-table';
 import { parsePlaintextCoxeterDiagram } from './parser';
 
 type Polytope = {
+  /** Coordinates of the vertices of the polytope */
   vertices: number[][];
+  /** Array of vertex pairs that make up each edge */
   edges: number[][];
+  /**
+   * Indices of the vertices that make up each face.
+   * The vertices are in traversal order.
+   */
   faces: number[][];
+  /**
+   * Indices of the faces that make up each cell.
+   */
+  cells: number[][];
 };
 
 /** Returns the relations contained within a coxeter diagram */
@@ -52,10 +62,10 @@ function placeMirrors(symmetryMatrix: number[][]) {
  * coordinates of a vertex v0 matching these constraints.
  */
 function placeInitialVertex(normals: number[][], d: number[]) {
-  return vm.norm(MMath.solve(normals, d));
+  return MMath.solve(normals, d);
 }
 
-function polygen(diagram: string): Polytope {
+function polygen(diagram: string, normalize = false): Polytope {
   const info = parsePlaintextCoxeterDiagram(diagram);
   const S = info.symmetryMatrix;
   const C = info.coxeterMatrix;
@@ -66,7 +76,7 @@ function polygen(diagram: string): Polytope {
 
   // Check that the input is valid
   const poly = subpolytopes[0];
-  if (d > 3 || d < 2) {
+  if (d > 4 || d < 2) {
     throw new Error('Only 2-3D polytopes are supported');
   }
   if (combineMethod != 'none') {
@@ -90,6 +100,9 @@ function polygen(diagram: string): Polytope {
   const normals = placeMirrors(S);
   const v0 = placeInitialVertex(normals, poly.offsets);
   const relations = getRelations(C, alphabet);
+  if (normalize) {
+    vm.normi(v0);
+  }
 
   // Generate vertices
   const subgens = poly.active.map((a, i) => (a ? '' : alphabet[i])).filter((x) => x != '');
@@ -132,39 +145,104 @@ function polygen(diagram: string): Polytope {
   }
 
   // Generate faces
+  const faceinfo = [] as {
+    generators: number[];
+    stabilizers: number[];
+    ct: CosetTable;
+    idx: number;
+  }[];
   const faces = [] as number[][];
-  if (d > 2) {
-    for (const [i, j] of combinations(arange(d), 2)) {
-      const m = S[i][j];
-      const f0 = [];
-      // If both mirrors are active, then they generate a face
-      if (poly.active[i] && poly.active[j]) {
-        for (let k = 0; k < m; k++) {
-          const word = `${alphabet[i]}${alphabet[j]}`.repeat(k);
-          f0.push(vct.applyWord(0, word), vct.applyWord(0, alphabet[j] + word));
-        }
+  for (const [i, j] of combinations(arange(d), 2)) {
+    const m = S[i][j];
+    const f0 = [];
+    // If both mirrors are active, then they generate a face
+    if (poly.active[i] && poly.active[j]) {
+      for (let k = 0; k < m; k++) {
+        const word = `${alphabet[i]}${alphabet[j]}`.repeat(k);
+        f0.push(vct.applyWord(0, word), vct.applyWord(0, alphabet[j] + word));
       }
-      // If one mirror is active, and the other is not orthogonal to that
-      // mirror, then they generate a face
-      else if ((poly.active[i] || poly.active[j]) && m > 2) {
-        for (let k = 0; k < m; k++) {
-          const word = `${alphabet[i]}${alphabet[j]}`.repeat(k);
-          f0.push(vct.applyWord(0, word));
-        }
+    }
+    // If one mirror is active, and the other is not orthogonal to that
+    // mirror, then they generate a face
+    else if ((poly.active[i] || poly.active[j]) && m > 2) {
+      for (let k = 0; k < m; k++) {
+        const word = `${alphabet[i]}${alphabet[j]}`.repeat(k);
+        f0.push(vct.applyWord(0, word));
+      }
+    }
+
+    if (f0.length == 0) continue;
+
+    const stabilizers = [i, j].concat(getOrthogonalStabilizingMirrors([i, j]));
+    const subgens = stabilizers.map((k) => alphabet[k]);
+    const fct = new CosetTable(alphabet, relations, subgens);
+    fct.solve();
+    const idx = faces.length;
+    faces.push(...getOrbit(fct.getRepresentatives(), f0));
+    faceinfo.push({ generators: [i, j], stabilizers, ct: fct, idx });
+  }
+
+  const cells = [];
+  if (d > 3) {
+    for (const combo of combinations(arange(d), 3)) {
+      const [i, j, k] = combo;
+      // In general, if active mirror count <= number of orthogonal pairs, then
+      // the n mirrors generate a face/cell/etc
+      const activeCount = ~~poly.active[i] + ~~poly.active[j] + ~~poly.active[k];
+      const orthoCount = ~~(S[i][j] == 2) + ~~(S[i][k] == 2) + ~~(S[j][k] == 2);
+      if (orthoCount > activeCount || activeCount == 0) {
+        continue; // This combination does not generate a cell
       }
 
-      if (f0.length == 0) continue;
+      const subgens = [i, j, k]
+        .concat(getOrthogonalStabilizingMirrors([i, j, k]))
+        .map((l) => alphabet[l]);
+      const cct = new CosetTable(alphabet, relations, subgens);
+      cct.solve();
+      const reps = cct.getRepresentatives();
 
-      const subgens = [i, j]
-        .concat(getOrthogonalStabilizingMirrors([i, j]))
-        .map((k) => alphabet[k]);
-      const fct = new CosetTable(alphabet, relations, subgens);
-      fct.solve();
-      faces.push(...getOrbit(fct.getRepresentatives(), f0));
+      // Now I know how cell0 gets reflected to other cells, but I still need
+      // to figure out which vertices make up cell0. And this won't be as easy
+      // as it was for edges and faces.
+
+      // 1) Find the subalphabet, subrelations, and subgenerators for what is
+      //    cell0
+      const subalphabet = alphabet[i] + alphabet[j] + alphabet[k];
+      const subrelations = relations.filter((r) => {
+        for (const c of r) {
+          if (!subalphabet.includes(c)) return false;
+        }
+        return true;
+      });
+
+      // 2) TODO
+      const toAdd = Array.from({ length: reps.length }, () => [] as number[]);
+      for (const info of faceinfo) {
+        if (info.generators.every((g) => combo.includes(g))) {
+          const subgens = info.stabilizers.filter((g) => combo.includes(g)).map((l) => alphabet[l]);
+
+          const sct = new CosetTable(subalphabet, subrelations, subgens);
+          sct.solve();
+          const orbot = sct.getRepresentatives().map((rep) => info.ct.applyWord(0, rep));
+          for (let r = 0; r < reps.length; r++) {
+            const word = reps[r];
+            toAdd[r].push(...orbot.map((o) => info.ct.applyWord(o, word) + info.idx));
+          }
+        }
+      }
+      cells.push(...toAdd);
+
+      // // 2) Find the subgenerators for cell0's vertices, and construct a coset table
+      // const subsubgens = [i, j, k].filter((l) => !poly.active[l]).map((l) => alphabet[l]);
+      // console.log(subalphabet, subrelations, subsubgens);
+      // const subvct = new CosetTable(subalphabet, subrelations, subsubgens);
+      // subvct.solve();
+      // const cell0verts = subvct.getRepresentatives().map((rep) => vct.applyWord(0, rep));
+      // cells.push(...getOrbit(cct.getRepresentatives(), cell0verts));
     }
   }
 
-  return { vertices, edges, faces };
+  return { vertices, edges, faces, cells };
 }
 
 function arange(a: number, b?: number, step = 1) {

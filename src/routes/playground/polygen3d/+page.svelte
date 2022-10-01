@@ -68,9 +68,9 @@
   async function loadDiagram(diagram: string) {
     loading = true;
     try {
-      const data = polygen(diagram);
-      if (data.faces.length === 0) {
-        throw new Error('WireframeRenderer cannot render 2D shapes (yet)');
+      const data = polygen(diagram, true);
+      if (data.vertices[0].length === 2) {
+        data.vertices = data.vertices.map((v) => [...v, 0]);
       }
       console.log(data);
       cube.loadData(data);
