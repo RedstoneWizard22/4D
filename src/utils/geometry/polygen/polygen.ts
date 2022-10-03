@@ -154,18 +154,19 @@ function polygen(diagram: string, normalize = false): Polytope {
   const faces = [] as number[][];
   for (const [i, j] of combinations(arange(d), 2)) {
     const m = S[i][j];
+    const c = C[i][j];
     const f0 = [];
     // If both mirrors are active, then they generate a face
     if (poly.active[i] && poly.active[j]) {
-      for (let k = 0; k < m; k++) {
+      for (let k = 0; k < c; k++) {
         const word = `${alphabet[i]}${alphabet[j]}`.repeat(k);
         f0.push(vct.applyWord(0, word), vct.applyWord(0, alphabet[j] + word));
       }
     }
     // If one mirror is active, and the other is not orthogonal to that
     // mirror, then they generate a face
-    else if ((poly.active[i] || poly.active[j]) && m > 2) {
-      for (let k = 0; k < m; k++) {
+    else if ((poly.active[i] || poly.active[j]) && m != 2) {
+      for (let k = 0; k < c; k++) {
         const word = `${alphabet[i]}${alphabet[j]}`.repeat(k);
         f0.push(vct.applyWord(0, word));
       }

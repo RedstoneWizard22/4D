@@ -216,7 +216,7 @@ export function parsePlaintextCoxeterDiagram(diagram: string): PolytopeDescripti
 
   // 3) Parse the diagram
   if (!isValidNode(diagram[0])) {
-    err(0, 1, 'First character must be a node');
+    err(0, 0, 'First character must be a node');
   }
 
   /** Returns the target of the vnode specified at location `i` in the diagram */
