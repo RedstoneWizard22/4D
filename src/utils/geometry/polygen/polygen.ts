@@ -82,13 +82,13 @@ function polygen(diagram: string, normalize = false): Polytope {
   if (combineMethod != 'none') {
     throw new Error('Plytope compounds/laces are not supported!');
   }
-  for (let i = 0; i < d; i++) {
-    for (let j = 0; j < d; j++) {
-      if (S[i][j] != C[i][j]) {
-        throw new Error('Fractional symmetry is not supported!');
-      }
-    }
-  }
+  // for (let i = 0; i < d; i++) {
+  //   for (let j = 0; j < d; j++) {
+  //     if (S[i][j] != C[i][j]) {
+  //       throw new Error('Fractional symmetry is not supported!');
+  //     }
+  //   }
+  // }
   if (poly.dual.some((x) => x)) {
     throw new Error('Dual polytopes are not supported!');
   }

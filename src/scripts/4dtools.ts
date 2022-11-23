@@ -84,6 +84,7 @@ function isProbablySingleVector(test: number[][] | number[]): test is number[] {
   return typeof test[0] === 'number';
 }
 
+/** Used to perform plane-angle rotations in 4 dimensions */
 class Rotor4D {
   // Angle of rotation
   _theta = 0;
@@ -94,13 +95,13 @@ class Rotor4D {
   // Signals that the rotation matrix needs to be recalculated
   _rotationMatrixDirty = false;
 
-  /** Sets the plane of rotation, given two vectors spanning it */
+  /** Sets the plane of rotation, given two 4-vectors spanning it */
   setPlane(v1: number[], v2: number[]): void {
     this._plane = vm.normi(orientedArea(v1, v2));
     this._rotationMatrixDirty = true;
   }
 
-  /** Sets the angle of rotation */
+  /** Sets the angle of rotation (in radians) */
   setAngle(theta: number): void {
     this._theta = theta;
     this._rotationMatrixDirty = true;
@@ -108,10 +109,12 @@ class Rotor4D {
 
   /** Calculates the rotation matrix */
   _calculateRotationMatrix(): void {
+    // I computed this by hand, using the formula for a rotor R. See theorem 3.7.1 from:
+    // https://scholarworks.sjsu.edu/cgi/viewcontent.cgi?article=7943&context=etd_theses
     const cTheta = Math.cos(this._theta / 2);
     const sTheta = Math.sin(this._theta / 2);
 
-    const c = [cTheta, ...this._plane.map((x) => x * sTheta)];
+    const c = [cTheta, ...vm.smult(this._plane, sTheta)];
 
     const c11 = c[0] * c[0];
     const c22 = c[1] * c[1];
@@ -224,10 +227,12 @@ class Rotor3D {
 
   /** Calculates the rotation matrix */
   _calculateRotationMatrix(): void {
+    // I computed this by hand, using the formula for a rotor R. See theorem 3.7.1 from:
+    // https://scholarworks.sjsu.edu/cgi/viewcontent.cgi?article=7943&context=etd_theses
     const cTheta = Math.cos(this._theta / 2);
     const sTheta = Math.sin(this._theta / 2);
 
-    const c = [cTheta, ...this._plane.map((x) => x * sTheta)];
+    const c = [cTheta, ...vm.smult(this._plane, sTheta)];
 
     const c11 = c[0] * c[0];
     const c22 = c[1] * c[1];

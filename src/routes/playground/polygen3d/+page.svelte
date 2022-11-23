@@ -5,7 +5,6 @@
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   import WireframeObject3D from '../../../scripts/wireframeobject3d';
   import AnimatedScene from '../../../ui/components/AnimatedScene.svelte';
-  import { useAnimationDebugger } from '../../../ui/utilities/use-animation-debugger';
 
   let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer;
   let cube: WireframeObject3D;
@@ -46,11 +45,8 @@
     loadDiagram(diagram);
   }
 
-  const debug = useAnimationDebugger();
   function frame() {
-    debug.begin();
     renderer.render(scene, camera);
-    debug.endSection('render');
   }
 
   function resize(_: unknown, width: number, height: number) {

@@ -13,4 +13,6 @@ export const d4 = {
   cell24: 'o4o3x3o',
   cell120: 'x5o3o3o',
   cell600: 'o5o3o3x',
+  tf: 'x x x5/2o',
+  tf2: 'x3o x7o',
 };
