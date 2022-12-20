@@ -3,7 +3,7 @@ import type { HyperObjectData3D, Rotation3D } from 'src/types/common';
 import { Rotor3D } from './4dtools';
 import * as vm from '$utils/vmath';
 import WireframeRenderer from './wireframerenderer';
-import { clamp } from 'three/src/math/MathUtils';
+import { clamp } from '$utils/number';
 
 export default class WireframeObject3D {
   renderer: WireframeRenderer;

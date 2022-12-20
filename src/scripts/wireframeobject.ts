@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { clamp } from 'three/src/math/MathUtils';
+import { clamp } from '$utils/number';
 import { perspectiveProject } from './4dtools';
 import HyperObject, { type HyperObjectData } from './hyperobject';
 import WireframeRenderer from './wireframerenderer';
