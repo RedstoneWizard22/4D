@@ -3,7 +3,7 @@ import type { HyperObjectData3D, Rotation3D } from 'src/types/common';
 import { Rotor3D } from './4dtools';
 import * as vm from '$utils/vmath';
 import WireframeRenderer from './wireframerenderer';
-import { hsl2rgb } from '$utils/color';
+import { clamp } from 'three/src/math/MathUtils';
 
 export default class WireframeObject3D {
   renderer: WireframeRenderer;
@@ -68,14 +68,12 @@ export default class WireframeObject3D {
       throw new Error('No data loaded');
     }
 
-    const color = [];
+    const depths = [];
     const MAX_Y = 1;
     for (let i = 0; i < this.vertices.length; i++) {
-      const y = this.vertices[i][1];
-      const h = ((y + MAX_Y) / MAX_Y) * 30;
-      color.push(hsl2rgb(h % 360, 1, 0.5));
+      depths.push(clamp((-this.vertices[i][1] / MAX_Y + 1) / 2, 0, 1));
     }
-    this.renderer.setVertexColors(color);
+    this.renderer.setVertexDepths(depths);
 
     if (ppFactor) {
       const interpPoints = [];

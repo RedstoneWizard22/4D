@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { hsl2rgb } from '$utils/color';
+import { clamp } from 'three/src/math/MathUtils';
 import { perspectiveProject } from './4dtools';
 import HyperObject, { type HyperObjectData } from './hyperobject';
 import WireframeRenderer from './wireframerenderer';
@@ -42,15 +42,13 @@ class WireframeObject extends HyperObject {
     const points3D = perspectiveProject(this.points4D, -2);
 
     const MAX_W = 1;
-    const color = [];
+    const depths = [];
     for (let i = 0; i < this.points4D.length; i++) {
-      const w = this.points4D[i][3];
-      const h = 60 - (1 + w / MAX_W) * 30;
-      color.push(hsl2rgb(h % 360, 1, 0.5));
+      depths.push(clamp((this.points4D[i][3] / MAX_W + 1) / 2, 0, 1));
     }
 
     this.renderer.setVertexPositions(points3D);
-    this.renderer.setVertexColors(color);
+    this.renderer.setVertexDepths(depths);
   }
 
   /** Deletes all meshes, use to dispose of object */

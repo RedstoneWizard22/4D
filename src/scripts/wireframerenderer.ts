@@ -9,15 +9,15 @@ class WireframeRenderer {
   vertex:
     | {
         mesh: THREE.InstancedMesh;
-        colorAttribute: THREE.InstancedBufferAttribute;
+        depthAttribute: THREE.InstancedBufferAttribute;
       }
     | undefined;
   edge:
     | {
         data: number[][];
         mesh: THREE.InstancedMesh;
-        color1Attribute: THREE.InstancedBufferAttribute;
-        color2Attribute: THREE.InstancedBufferAttribute;
+        depth1Attribute: THREE.InstancedBufferAttribute;
+        depth2Attribute: THREE.InstancedBufferAttribute;
       }
     | undefined;
   face:
@@ -59,102 +59,114 @@ class WireframeRenderer {
 
     const defaultMatrix = new THREE.Matrix4();
 
+    // TODO: Make these modifiable
+    const extraUniforms = {
+      nearColor: { value: new THREE.Color().setHSL(60 / 360, 1, 0.5) },
+      farColor: { value: new THREE.Color().setHSL(0 / 360, 1, 0.5) },
+    };
+
     /// Create edges
     const edgeData = getEdgesFromFaces(faces);
-    const edgeGeometry = new THREE.CylinderBufferGeometry(thickness, thickness, 1, 16);
+    const edgeGeometry = new THREE.CylinderGeometry(thickness, thickness, 1, 16);
     edgeGeometry.rotateX(-Math.PI / 2);
     edgeGeometry.translate(0, 0, -0.5);
     const edgeMaterial = new THREE.MeshPhongMaterial({ shininess: 100 });
     edgeMaterial.defines = { USE_UV: '' };
     edgeMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms = { ...shader.uniforms, ...extraUniforms };
       shader.vertexShader = shader.vertexShader
         .replace(
           '#define PHONG',
           `#define PHONG
-          varying vec3 vColor1;
-          varying vec3 vColor2;`
+          varying float vDepth1;
+          varying float vDepth2;`
         )
         .replace(
           '#include <common>',
           `#include <common>
-          attribute vec3 color1;
-          attribute vec3 color2;`
+          attribute float depth1;
+          attribute float depth2;`
         )
         .replace(
           '#include <project_vertex>',
           `#include <project_vertex>
-          vColor1 = color1;
-          vColor2 = color2;`
+          vDepth1 = depth1;
+          vDepth2 = depth2;`
         );
 
-      shader.fragmentShader = `
-        varying vec3 vColor1;
-        varying vec3 vColor2;
+      shader.fragmentShader = ` 
+        uniform vec3 nearColor;
+        uniform vec3 farColor;
+        varying float vDepth1;
+        varying float vDepth2;
         ${shader.fragmentShader.replace(
           'vec4 diffuseColor = vec4( diffuse, opacity );',
-          'vec4 diffuseColor = vec4( mix( vColor1, vColor2, vec3(vUv.y) ), opacity );'
+          'vec4 diffuseColor = vec4( mix( nearColor, farColor, vDepth1 + (vDepth2 - vDepth1) * vUv.y ), opacity );'
         )}
         `;
     };
-    const edgeColor1Attribute = new THREE.InstancedBufferAttribute(
-      new Float32Array(edgeData.length * 3),
-      3
+    const edgeDepth1Attribute = new THREE.InstancedBufferAttribute(
+      new Float32Array(edgeData.length).fill(0),
+      1
     );
-    const edgeColor2Attribute = new THREE.InstancedBufferAttribute(
-      new Float32Array(edgeData.length * 3),
-      3
+    const edgeDepth2Attribute = new THREE.InstancedBufferAttribute(
+      new Float32Array(edgeData.length).fill(0),
+      1
     );
-    edgeGeometry.setAttribute('color1', edgeColor1Attribute);
-    edgeGeometry.setAttribute('color2', edgeColor2Attribute);
+    edgeGeometry.setAttribute('depth1', edgeDepth1Attribute);
+    edgeGeometry.setAttribute('depth2', edgeDepth2Attribute);
     const edgeMesh = new THREE.InstancedMesh(edgeGeometry, edgeMaterial, edgeData.length);
     this.scene.add(edgeMesh);
     this.edge = {
       data: edgeData,
       mesh: edgeMesh,
-      color1Attribute: edgeColor1Attribute,
-      color2Attribute: edgeColor2Attribute,
+      depth1Attribute: edgeDepth1Attribute,
+      depth2Attribute: edgeDepth2Attribute,
     };
     for (let i = 0; i < edgeData.length; i++) {
       edgeMesh.setMatrixAt(i, defaultMatrix);
     }
 
     /// Create vertices
-    const vertexGeometry = new THREE.SphereBufferGeometry(thickness, 16, 16);
+    const vertexGeometry = new THREE.SphereGeometry(thickness, 16, 16);
     const vertexMaterial = new THREE.MeshPhongMaterial({ shininess: 100 });
     vertexMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms = { ...shader.uniforms, ...extraUniforms };
       shader.vertexShader = shader.vertexShader
         .replace(
           '#define PHONG',
           `#define PHONG
-          varying vec3 vColor;`
+          varying float vDepth;`
         )
         .replace(
           '#include <common>',
           `#include <common>
-          attribute vec3 color;`
+          attribute float depth;`
         )
         .replace(
           '#include <project_vertex>',
           `#include <project_vertex>
-          vColor = color;`
+          vDepth = depth;`
         );
 
       shader.fragmentShader = `
-        varying vec3 vColor;
+        uniform vec3 nearColor;
+        uniform vec3 farColor;
+        varying float vDepth;
         ${shader.fragmentShader.replace(
           'vec4 diffuseColor = vec4( diffuse, opacity );',
-          'vec4 diffuseColor = vec4( vColor, opacity );'
+          'vec4 diffuseColor = vec4( mix(nearColor, farColor, vDepth), opacity );'
         )}
         `;
     };
-    const vertexColorAttribute = new THREE.InstancedBufferAttribute(
-      new Float32Array(vertexCount * 3),
-      3
+    const vertexDepthAttribute = new THREE.InstancedBufferAttribute(
+      new Float32Array(vertexCount),
+      1
     );
-    vertexGeometry.setAttribute('color', vertexColorAttribute);
+    vertexGeometry.setAttribute('depth', vertexDepthAttribute);
     const vertexMesh = new THREE.InstancedMesh(vertexGeometry, vertexMaterial, vertexCount);
     this.scene.add(vertexMesh);
-    this.vertex = { mesh: vertexMesh, colorAttribute: vertexColorAttribute };
+    this.vertex = { mesh: vertexMesh, depthAttribute: vertexDepthAttribute };
     for (let i = 0; i < vertexCount; i++) {
       vertexMesh.setMatrixAt(i, defaultMatrix);
     }
@@ -277,37 +289,29 @@ class WireframeRenderer {
     this.face.positionAttribute.needsUpdate = true;
   }
 
-  /** Update the colors of the vertices (edge colors are interpolated from these)
-   *  @param {number[][]} color - Array of rgb color values, one for each vertex
+  /** Update the depths of the vertices (edge colors are interpolated from these)
+   *  @param {number[]} depths - Array of depth values, one for each vertex
    */
-  setVertexColors(color: number[][]): void {
+  setVertexDepths(depths: number[]): void {
     if (!this.vertex || !this.edge) throw new Error('Object not initialized');
 
     // Update edges
-    const color1arr = this.edge.color1Attribute.array as Float32Array;
-    const color2arr = this.edge.color2Attribute.array as Float32Array;
+    const depth1 = this.edge.depth1Attribute.array as Float32Array;
+    const depth2 = this.edge.depth2Attribute.array as Float32Array;
     for (let i = 0; i < this.edge.data.length; i++) {
       const edge = this.edge.data[i];
-      const c1 = color[edge[0]];
-      const c2 = color[edge[1]];
-      color1arr[i * 3] = c1[0];
-      color1arr[i * 3 + 1] = c1[1];
-      color1arr[i * 3 + 2] = c1[2];
-      color2arr[i * 3] = c2[0];
-      color2arr[i * 3 + 1] = c2[1];
-      color2arr[i * 3 + 2] = c2[2];
+      depth1[i] = depths[edge[0]];
+      depth2[i] = depths[edge[1]];
     }
-    this.edge.color1Attribute.needsUpdate = true;
-    this.edge.color2Attribute.needsUpdate = true;
+    this.edge.depth1Attribute.needsUpdate = true;
+    this.edge.depth2Attribute.needsUpdate = true;
 
     // Update vertices
-    const colorarr = this.vertex.colorAttribute.array as Float32Array;
-    for (let i = 0; i < color.length; i++) {
-      colorarr[i * 3] = color[i][0];
-      colorarr[i * 3 + 1] = color[i][1];
-      colorarr[i * 3 + 2] = color[i][2];
+    const depth = this.vertex.depthAttribute.array as Float32Array;
+    for (let i = 0; i < depths.length; i++) {
+      depth[i] = depths[i];
     }
-    this.vertex.colorAttribute.needsUpdate = true;
+    this.vertex.depthAttribute.needsUpdate = true;
   }
 
   /** Deletes all meshes, use to dispose of object */
