@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { clamp } from '$utils/number';
+import * as vm from '$utils/vmath';
 import { perspectiveProject } from './4dtools';
 import HyperObject, { type HyperObjectData } from './hyperobject';
 import WireframeRenderer from './wireframerenderer';
@@ -20,11 +21,23 @@ class WireframeObject extends HyperObject {
   /** Loades err... Data */
   loadData(data: HyperObjectData): void {
     super.loadData(data);
-    this.renderer.init(
-      data.vertices.length,
-      data.faces,
-      (data.optimalThickness || 0.03) * 0.8 * 0.9
-    );
+
+    const { vertices, faces } = data;
+    let totalFaceArea = 0;
+    for (const face of faces) {
+      const v0 = vertices[face[0]];
+      for (let i = 1; i < face.length - 1; i++) {
+        const v1 = vertices[face[i]];
+        const v2 = vertices[face[i + 1]];
+        const a = vm.sub(v1, v0);
+        const b = vm.sub(v2, v0);
+        totalFaceArea += vm.mag(a) * vm.mag(b) * Math.sin(vm.angle(a, b));
+      }
+    }
+
+    const thickness = Math.sqrt(totalFaceArea / faces.length) * 0.025;
+
+    this.renderer.init(vertices.length, faces, thickness);
   }
 
   /** Toggles visibility of all face meshes */
