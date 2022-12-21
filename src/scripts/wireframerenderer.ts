@@ -63,11 +63,12 @@ class WireframeRenderer {
     const extraUniforms = {
       nearColor: { value: new THREE.Color().setHSL(60 / 360, 1, 0.5) },
       farColor: { value: new THREE.Color().setHSL(0 / 360, 1, 0.5) },
+      depthScaling: { value: 0.2 },
     };
 
     /// Create edges
     const edgeData = getEdgesFromFaces(faces);
-    const edgeGeometry = new THREE.CylinderGeometry(thickness, thickness, 1, 16);
+    const edgeGeometry = new THREE.CylinderGeometry(thickness, thickness, 1, 16, 1, true);
     edgeGeometry.rotateX(-Math.PI / 2);
     edgeGeometry.translate(0, 0, -0.5);
     const edgeMaterial = new THREE.MeshPhongMaterial({ shininess: 100 });
@@ -78,6 +79,7 @@ class WireframeRenderer {
         .replace(
           '#define PHONG',
           `#define PHONG
+          uniform float depthScaling;
           varying float vDepth1;
           varying float vDepth2;`
         )
@@ -89,7 +91,10 @@ class WireframeRenderer {
         )
         .replace(
           '#include <project_vertex>',
-          `#include <project_vertex>
+          `float scaleFactor = mix( 1.0 + depthScaling, 1.0 - depthScaling, depth1 + (depth2 - depth1) * vUv.y );
+          transformed.x *= scaleFactor;
+          transformed.y *= scaleFactor;
+          #include <project_vertex>
           vDepth1 = depth1;
           vDepth2 = depth2;`
         );
@@ -136,6 +141,7 @@ class WireframeRenderer {
         .replace(
           '#define PHONG',
           `#define PHONG
+          uniform float depthScaling;
           varying float vDepth;`
         )
         .replace(
@@ -145,7 +151,8 @@ class WireframeRenderer {
         )
         .replace(
           '#include <project_vertex>',
-          `#include <project_vertex>
+          `transformed *= mix( 1.0 + depthScaling, 1.0 - depthScaling, depth );
+          #include <project_vertex>
           vDepth = depth;`
         );
 
