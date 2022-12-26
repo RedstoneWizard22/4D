@@ -42,32 +42,55 @@ class HyperObject {
   }
 
   /** Rotates points4D by a certain ammount */
-  rotate(rotation: Partial<Rotation4D>): void {
+  rotate(rotation: Partial<Rotation4D>, worldAxes = false): void {
     const axes = this.axes;
     const rotor = this.rotor;
 
     for (const [key, value] of Object.entries(rotation)) {
       if (Math.abs(value) > 0.00001) {
         // Set the plane of rotation
-        switch (key) {
-          case 'xy':
-            rotor.setPlane(axes[0], axes[1]);
-            break;
-          case 'xz':
-            rotor.setPlane(axes[0], axes[2]);
-            break;
-          case 'yz':
-            rotor.setPlane(axes[1], axes[2]);
-            break;
-          case 'xw':
-            rotor.setPlane(axes[0], axes[3]);
-            break;
-          case 'yw':
-            rotor.setPlane(axes[1], axes[3]);
-            break;
-          case 'zw':
-            rotor.setPlane(axes[2], axes[3]);
-            break;
+        if (!worldAxes) {
+          switch (key) {
+            case 'xy':
+              rotor.setPlane(axes[0], axes[1]);
+              break;
+            case 'xz':
+              rotor.setPlane(axes[0], axes[2]);
+              break;
+            case 'yz':
+              rotor.setPlane(axes[1], axes[2]);
+              break;
+            case 'xw':
+              rotor.setPlane(axes[0], axes[3]);
+              break;
+            case 'yw':
+              rotor.setPlane(axes[1], axes[3]);
+              break;
+            case 'zw':
+              rotor.setPlane(axes[2], axes[3]);
+              break;
+          }
+        } else {
+          switch (key) {
+            case 'xy':
+              rotor.setPlane([1, 0, 0, 0], [0, 1, 0, 0]);
+              break;
+            case 'xz':
+              rotor.setPlane([1, 0, 0, 0], [0, 0, 1, 0]);
+              break;
+            case 'yz':
+              rotor.setPlane([0, 1, 0, 0], [0, 0, 1, 0]);
+              break;
+            case 'xw':
+              rotor.setPlane([1, 0, 0, 0], [0, 0, 0, 1]);
+              break;
+            case 'yw':
+              rotor.setPlane([0, 1, 0, 0], [0, 0, 0, 1]);
+              break;
+            case 'zw':
+              rotor.setPlane([0, 0, 1, 0], [0, 0, 0, 1]);
+              break;
+          }
         }
 
         // Set the angle of rotation

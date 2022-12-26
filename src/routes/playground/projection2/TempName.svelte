@@ -1,17 +1,40 @@
 <script lang="ts">
+  import { Slider } from '$ui/components';
   import lockOff from '@iconify/icons-akar-icons/lock-off';
+  import lockOn from '@iconify/icons-akar-icons/lock-on';
   import Icon from '@iconify/svelte';
+
+  export let plane: string;
+  export let value = 0;
+  let locked = false;
+
+  function onChangeEnd() {
+    if (!locked) {
+      value = 0;
+    }
+  }
+
+  function onToggleLock() {
+    locked = !locked;
+    onChangeEnd();
+  }
+
+  const colors = {
+    X: 'text-red-500',
+    Y: 'text-green-500',
+    Z: 'text-blue-500',
+    W: 'text-cyan-500',
+  };
 </script>
 
 <div class="flex w-full items-center space-x-4">
   <span class="font-bold">
-    <span class="text-red-500">X</span><span class="text-green-500">Y</span>
+    {#each plane.toUpperCase().split('') as char}
+      <span class={colors[char]}>{char}</span>
+    {/each}
   </span>
-  <div class="relative h-5 flex-grow">
-    <div class="absolute top-1.5 h-2 w-full rounded-full bg-gray-200" />
-    <div
-      class="absolute top-[0.0625rem] left-1/2 h-[1.125rem] w-[1.125rem] -translate-x-1/2 rounded-full border-[3px] border-blue-500 bg-white shadow-sm"
-    />
+  <div class="flex-grow">
+    <Slider min={-1} max={1} fillFrom="zero" bind:value on:changeend={onChangeEnd} />
   </div>
-  <Icon icon={lockOff} />
+  <button on:click={onToggleLock}><Icon icon={locked ? lockOn : lockOff} /></button>
 </div>
