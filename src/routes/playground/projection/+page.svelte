@@ -4,10 +4,17 @@
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   import WireframeObject from '../../../scripts/wireframeobject';
   import type { Rotation4D } from 'src/types/common';
-  import AnimatedScene from '../../../ui/components/AnimatedScene.svelte';
+  import { AnimatedScene } from '$ui/components';
   import { useAnimationDebugger } from '../../../ui/utilities/use-animation-debugger';
-  import { d4 } from '../../../data';
+  import { d4 } from '$data';
   import polygen from '$utils/geometry/polygen';
+  import Icon from '@iconify/svelte';
+  import arrowBack from '@iconify/icons-akar-icons/arrow-back';
+  import arrowCounterClockwise from '@iconify/icons-akar-icons/arrow-counter-clockwise';
+  import rotateOrbit from '@iconify/icons-mdi/rotate-orbit';
+  import cubeUnfolded from '@iconify/icons-mdi/cube-unfolded';
+  import arrowRightLeft from '@iconify/icons-akar-icons/arrow-right-left';
+  import TempName from './TempName.svelte';
 
   type Names = keyof typeof d4;
   let selected: Names = 'cell8';
@@ -38,11 +45,11 @@
 
     ////////// Scene Setup //////////
     // Camera
-    camera.position.set(0, 1.3, -3.25);
+    camera.position.set(0, 1.1, -2.75);
     camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0xd1d1d1, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xd1d1d1, 0.75);
     scene.add(ambientLight);
 
     const directionalLight = new THREE.PointLight(0xffffff, 0.5);
@@ -55,10 +62,21 @@
   }
 
   const debug = useAnimationDebugger();
-  function frame() {
+  function frame(delta: number) {
     debug.begin();
-    cube.reset();
-    cube.rotate(rotation);
+    // cube.reset();
+    const MULT = (2 * delta) / 1000;
+    cube.rotate(
+      {
+        xy: rotation.xy * MULT,
+        xz: rotation.xz * MULT,
+        yz: rotation.yz * MULT,
+        xw: rotation.xw * MULT,
+        yw: rotation.yw * MULT,
+        zw: rotation.zw * MULT,
+      },
+      true
+    );
     debug.endSection('rotate');
     cube.update();
     debug.endSection('update');
@@ -77,12 +95,6 @@
     renderer.dispose();
   }
 
-  let faces = true;
-  function toggleFaces() {
-    faces = !faces;
-    cube.setFacesVisible(faces);
-  }
-
   async function switchShape(shape: string) {
     loading = true;
     selected = shape as Names;
@@ -93,36 +105,94 @@
 </script>
 
 <div class="flex h-full w-full p-4 md:space-x-5 md:p-5">
-  <div class="h-full w-[70%] overflow-clip rounded-xl bg-white">
-    <AnimatedScene callbacks={{ init, frame, resize, destroy }} {loading} />
+  <div class="relative h-full w-[70%]">
+    <div class="h-full w-full overflow-clip rounded-xl bg-white">
+      <AnimatedScene callbacks={{ init, frame, resize, destroy }} {loading} />
+    </div>
+    <div class="floaty absolute top-0 left-0 z-20 rounded-br-lg bg-gray-50">
+      <button class="px-2 py-1 text-base">
+        <Icon inline class="inline" icon={arrowBack} />
+        <!-- <span class="pl-1">Back</span> -->
+      </button>
+    </div>
   </div>
   <div class="h-full w-[30%]">
-    <a href="/">Home</a>
-    <div class="space-y-2">
-      {#each planes as plane}
-        <p>{plane}</p>
-        <input
-          name={plane}
-          class="w-full"
-          type="range"
-          min={-Math.PI}
-          max={Math.PI}
-          step={Math.PI / 180}
-          bind:value={rotation[plane]}
-        />
-      {/each}
+    <p class="ml-2 py-2 text-xl font-semibold text-gray-600">Controls</p>
+    <div class="w-full space-y-4 rounded-lg bg-white p-3 px-4">
+      <div class="flex space-x-6">
+        <TempName plane="xy" bind:value={rotation.xy} />
+        <TempName plane="xz" bind:value={rotation.xz} />
+      </div>
+      <div class="flex space-x-6">
+        <TempName plane="yz" bind:value={rotation.yz} />
+        <TempName plane="xw" bind:value={rotation.xw} />
+      </div>
+      <div class="flex space-x-6">
+        <TempName plane="yw" bind:value={rotation.yw} />
+        <TempName plane="zw" bind:value={rotation.zw} />
+      </div>
+      <div class="pb-0.5">
+        <button
+          class="mx-auto block rounded border px-3 py-1.5 text-sm shadow-sm"
+          on:click={() => cube.reset()}
+        >
+          <Icon inline class="inline text-gray-400" icon={arrowCounterClockwise} />
+          <span class="pl-1 font-semibold">Reset rotation</span>
+        </button>
+      </div>
     </div>
-    <div class="space-y-2">
-      <button on:click={toggleFaces}>Toggle faces</button>
+    <div class="mt-3 flex  space-x-1 rounded-lg bg-gray-100 p-1">
+      <div class="flex-1 rounded bg-white p-1.5 px-3 shadow">
+        <Icon inline class="inline" icon={rotateOrbit} />
+        <span class="pl-1">Rotate</span>
+      </div>
+      <div class="flex-1 rounded p-1.5 px-3">
+        <Icon inline class="inline" icon={cubeUnfolded} />
+        <span class="pl-1">Unfold</span>
+      </div>
     </div>
-    <select bind:value={selected} on:change={(e) => switchShape(e.currentTarget.value)}>
-      {#each Object.keys(d4) as name}
-        <option value={name}>{name}</option>
-      {/each}
-    </select>
+    <div class="mt-3 flex items-center justify-between rounded-lg bg-white p-2.5 px-3.5">
+      <div class="">
+        <div class="font-medium">Tesseract</div>
+        <div class="text-xs text-gray-500">x4o3o3o</div>
+      </div>
+      <div class="text-2xl">
+        <Icon icon={arrowRightLeft} />
+      </div>
+    </div>
   </div>
 </div>
 
 <svelte:head>
   <title>4D Playground · Projection</title>
 </svelte:head>
+
+<style>
+  .floaty::after {
+    width: 0.5rem;
+    height: 0.5rem;
+    background: transparent;
+    bottom: -0.5rem;
+    left: 0px;
+    position: absolute;
+    content: '';
+    border-top-left-radius: 100%;
+    box-shadow: 0px 0px 0px 50px rgb(249 250 251 / var(--tw-bg-opacity));
+    clip: rect(0px, 0.5rem, 0.5rem, 0px);
+    display: block;
+  }
+
+  .floaty::before {
+    width: 0.5rem;
+    height: 0.5rem;
+    background: transparent;
+    top: 0px;
+    right: -0.5rem;
+    position: absolute;
+    content: '';
+    border-top-left-radius: 100%;
+    box-shadow: 0px 0px 0px 50px rgb(249 250 251 / var(--tw-bg-opacity));
+    clip: rect(0px, 0.5rem, 0.5rem, 0px);
+    display: block;
+  }
+</style>
