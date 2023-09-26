@@ -71,7 +71,10 @@ class WireframeRenderer {
     const edgeGeometry = new THREE.CylinderGeometry(thickness, thickness, 1, 16, 1, true);
     edgeGeometry.rotateX(-Math.PI / 2);
     edgeGeometry.translate(0, 0, -0.5);
-    const edgeMaterial = new THREE.MeshPhongMaterial({ shininess: 100 });
+    const edgeMaterial = new THREE.MeshPhongMaterial({
+      shininess: 100,
+      transparent: false,
+    });
     edgeMaterial.defines = { USE_UV: '' };
     edgeMaterial.onBeforeCompile = (shader) => {
       shader.uniforms = { ...shader.uniforms, ...extraUniforms };
@@ -184,6 +187,10 @@ class WireframeRenderer {
       new Float32Array(vertexCount * 3),
       3
     );
+    // positionAttribute.setUsage(THREE.DynamicDrawUsage);
+    // vertexDepthAttribute.setUsage(THREE.DynamicDrawUsage);
+    // edgeDepth1Attribute.setUsage(THREE.DynamicDrawUsage);
+    // edgeDepth2Attribute.setUsage(THREE.DynamicDrawUsage);
     geometry.setAttribute('position', positionAttribute);
 
     const faceIndices = [];

@@ -39,6 +39,7 @@
   "type": "module",
   "dependencies": {
     "@types/three": "^0.148.0",
+    "@webgpu/types": "^0.1.33",
     "three": "^0.148.0"
   }
 }

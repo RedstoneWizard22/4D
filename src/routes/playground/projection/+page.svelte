@@ -36,7 +36,7 @@
       antialias: true,
       alpha: true,
     });
-    renderer.sortObjects = false;
+    renderer.sortObjects = true;
 
     scene.background = new THREE.Color(0xffffff);
     renderer.setSize(width, height);
@@ -96,6 +96,7 @@
   }
 
   async function switchShape(shape: string) {
+    console.log(shape);
     loading = true;
     selected = shape as Names;
     const data = polygen(d4[selected], true);
@@ -117,7 +118,7 @@
     </div>
   </div>
   <div class="h-full w-[30%]">
-    <p class="ml-2 py-2 text-xl font-semibold text-gray-600">Controls</p>
+    <p class="ml-2 py-2 text-xl font-semibold text-gray-600">Controls (WIP)</p>
     <div class="w-full space-y-4 rounded-lg bg-white p-3 px-4">
       <div class="flex space-x-6">
         <TempName plane="xy" bind:value={rotation.xy} />
@@ -141,7 +142,7 @@
         </button>
       </div>
     </div>
-    <div class="mt-3 flex  space-x-1 rounded-lg bg-gray-100 p-1">
+    <div class="mt-3 flex space-x-1 rounded-lg bg-gray-100 p-1">
       <div class="flex-1 rounded bg-white p-1.5 px-3 shadow">
         <Icon inline class="inline" icon={rotateOrbit} />
         <span class="pl-1">Rotate</span>
@@ -153,13 +154,19 @@
     </div>
     <div class="mt-3 flex items-center justify-between rounded-lg bg-white p-2.5 px-3.5">
       <div class="">
-        <div class="font-medium">Tesseract</div>
-        <div class="text-xs text-gray-500">x4o3o3o</div>
+        <div class="font-medium">{selected.replace('cell8', 'Tesseract')}</div>
+        <div class="text-xs text-gray-500">{d4[selected]}</div>
       </div>
       <div class="text-2xl">
         <Icon icon={arrowRightLeft} />
       </div>
     </div>
+    <p class="mt-2">Temporary shape selection:</p>
+    <select value={selected} on:change={(ev) => switchShape(ev.target.value)}>
+      {#each Object.keys(d4) as v}
+        <option value={v}>{v}</option>
+      {/each}
+    </select>
   </div>
 </div>
 
