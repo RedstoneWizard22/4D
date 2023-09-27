@@ -15,6 +15,8 @@
   import cubeUnfolded from '@iconify/icons-mdi/cube-unfolded';
   import arrowRightLeft from '@iconify/icons-akar-icons/arrow-right-left';
   import TempName from './TempName.svelte';
+  import { afterNavigate, goto } from '$app/navigation';
+  import { base } from '$app/paths';
 
   type Names = keyof typeof d4;
   let selected: Names = 'cell8';
@@ -103,6 +105,12 @@
     cube.loadData(data);
     loading = false;
   }
+
+  let previousPage: string = base;
+
+  afterNavigate(({ from }) => {
+    previousPage = from?.url.pathname || previousPage;
+  });
 </script>
 
 <div class="flex h-full w-full p-4 md:space-x-5 md:p-5">
@@ -111,7 +119,7 @@
       <AnimatedScene callbacks={{ init, frame, resize, destroy }} {loading} />
     </div>
     <div class="floaty absolute top-0 left-0 z-20 rounded-br-lg bg-gray-50">
-      <button class="px-2 py-1 text-base">
+      <button class="px-2 py-1 text-base" on:click={() => goto('../playground')}>
         <Icon inline class="inline" icon={arrowBack} />
         <!-- <span class="pl-1">Back</span> -->
       </button>
