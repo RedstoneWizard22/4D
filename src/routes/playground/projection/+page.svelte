@@ -155,7 +155,7 @@
     <div class="mt-3 flex items-center justify-between rounded-lg bg-white p-2.5 px-3.5">
       <div class="">
         <div class="font-medium">{selected.replace('cell8', 'Tesseract')}</div>
-        <div class="text-xs text-gray-500">{d4[selected]}</div>
+        <div class="text-xs text-gray-500">Coxeter diagram: {d4[selected]}</div>
       </div>
       <div class="text-2xl">
         <Icon icon={arrowRightLeft} />
